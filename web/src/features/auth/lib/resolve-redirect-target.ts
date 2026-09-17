@@ -25,8 +25,9 @@ function isInternalPathname(pathname: string) {
   }
 
   try {
-    const applicationOrigin = 'https://matchmaker.local';
-    return new URL(pathname, applicationOrigin).origin === applicationOrigin;
+    // Используем текущий origin вместо хардкода
+    const currentOrigin = window.location.origin;
+    return new URL(pathname, currentOrigin).origin === currentOrigin;
   } catch {
     return false;
   }
