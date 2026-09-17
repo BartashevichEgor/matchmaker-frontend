@@ -1,36 +1,28 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { AuthProvider } from '../../app/providers/AuthProvider';
 
-function setMockSession() {
-  localStorage.setItem(
-    'matchmaker:v1:users',
-    JSON.stringify([
-      { id: 'user-1', email: 'test@example.com', password: 'password123', createdAt: '2026-01-01T00:00:00.000Z' },
-    ])
-  );
-  localStorage.setItem('matchmaker:v1:session', JSON.stringify({ userId: 'user-1' }));
-}
-
-function renderAppLayoutWithAuth(childElement: React.ReactElement) {
-  setMockSession();
-  return render(
-    <MemoryRouter initialEntries={['/protected']}>
-      <AuthProvider>
-        <Routes>
-          <Route path="/protected" element={<AppLayout />}>
-            <Route index element={childElement} />
-          </Route>
-          <Route path="/login" element={<div>Login Page</div>} />
-          <Route path="/" element={<div>Home Page</div>} />
-        </Routes>
-      </AuthProvider>
-    </MemoryRouter>
-  );
-}
+// Мокаем сервис аутентификации, чтобы инициализация происходила синхронно
+vi.mock('../../shared/lib/auth/mock-auth-service', () => ({
+  mockAuthService: {
+    getCurrentUser: vi.fn().mockResolvedValue({
+      id: 'user-1',
+      email: 'test@example.com',
+    }),
+    login: vi.fn().mockResolvedValue({
+      id: 'user-1',
+      email: 'test@example.com',
+    }),
+    register: vi.fn().mockResolvedValue({
+      id: 'user-1',
+      email: 'test@example.com',
+    }),
+    logout: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 describe('AppLayout', () => {
   beforeEach(() => {
@@ -38,60 +30,58 @@ describe('AppLayout', () => {
     localStorage.clear();
   });
 
-  it('renders header with logo and navigation when user is authenticated', async () => {
-    renderAppLayoutWithAuth(<div data-testid="child-content">Child content</div>);
+  function renderAppLayout(childElement: React.ReactElement) {
+    return render(
+      <MemoryRouter initialEntries={['/protected']}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/protected" element={<AppLayout />}>
+              <Route index element={childElement} />
+            </Route>
+            <Route path="/login" element={<div>Login Page</div>} />
+            <Route path="/" element={<div>Home Page</div>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('renders header with logo and navigation when user is authenticated', () => {
+    renderAppLayout(<div data-testid="child-content">Child content</div>);
     
-    // Wait for auth initialization and app render
-    await waitFor(() => {
-      expect(screen.getByText('Matchmaker')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
+    // После мокания сервиса инициализация происходит синхронно
+    expect(screen.getByText('Matchmaker')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Лента' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Проекты' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Мэтчи' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Чат' })).toBeInTheDocument();
+    // Чат не в навигации — нужен реальный matchId для ссылки
   });
 
-  it('renders logout button when user is authenticated', async () => {
-    renderAppLayoutWithAuth(<div data-testid="child-content">Child content</div>);
+  it('renders logout button when user is authenticated', () => {
+    renderAppLayout(<div data-testid="child-content">Child content</div>);
     
-    // Wait for auth initialization
-    await waitFor(() => {
-      expect(screen.getByText('Matchmaker')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    const logoutButton = screen.getByRole('button', { name: 'Выход' });
-    expect(logoutButton).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Выход' })).toBeInTheDocument();
   });
 
-  it('renders Outlet for children when user is authenticated', async () => {
-    renderAppLayoutWithAuth(<div data-testid="child-content">Child content</div>);
+  it('renders Outlet for children when user is authenticated', () => {
+    renderAppLayout(<div data-testid="child-content">Child content</div>);
     
-    // Wait for auth initialization
-    await waitFor(() => {
-      expect(screen.getByText('Matchmaker')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    const child = screen.getByTestId('child-content');
-    expect(child).toBeInTheDocument();
+    expect(screen.getByTestId('child-content')).toBeInTheDocument();
   });
 
   it('logout calls logout and redirects to /', async () => {
     const user = userEvent.setup();
-    renderAppLayoutWithAuth(<div data-testid="child-content">Child content</div>);
-    
-    // Wait for auth initialization
-    await waitFor(() => {
-      expect(screen.getByText('Matchmaker')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    renderAppLayout(<div data-testid="child-content">Child content</div>);
     
     const logoutButton = screen.getByRole('button', { name: 'Выход' });
     await user.click(logoutButton);
     
-    // Wait for navigation to complete
-    await waitFor(() => {
-      expect(window.location.pathname).toBe('/');
-    }, { timeout: 3000 });
+    // Проверяем, что произошел редирект
+    expect(window.location.pathname).toBe('/');
+    
+    // Проверяем, что logout был вызван
+    const { mockAuthService } = await import('../../shared/lib/auth/mock-auth-service');
+    expect(mockAuthService.logout).toHaveBeenCalled();
   });
 });

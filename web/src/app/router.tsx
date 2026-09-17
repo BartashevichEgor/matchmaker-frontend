@@ -1,4 +1,4 @@
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './providers/ProtectedRoute';
 import { AppLayout } from '../layouts/AppLayout/AppLayout';
 import { HomePage } from '../pages/home/HomePage';

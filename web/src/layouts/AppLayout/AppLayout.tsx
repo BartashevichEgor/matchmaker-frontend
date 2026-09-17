@@ -8,10 +8,10 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/feed', label: 'Лента' },
-  { path: '/projects', label: 'Проекты' },
-  { path: '/profile', label: 'Профиль' },
-  { path: '/matches', label: 'Мэтчи' },
+  { path: '/feed', label: 'Лента', exact: true },
+  { path: '/projects', label: 'Проекты', exact: true },
+  { path: '/profile', label: 'Профиль', exact: true },
+  { path: '/matches', label: 'Мэтчи', exact: true },
 ];
 
 function isActive(location: RouterLocation, path: string, exact?: boolean): boolean {
@@ -43,20 +43,13 @@ export function AppLayout() {
               <li key={item.path} className="nav-item">
                 <Link
                   to={item.path}
-                  className={`nav-link${isActive(location, item.path) ? ' nav-link--active' : ''}`}
+                  className={`nav-link${isActive(location, item.path, item.exact) ? ' nav-link--active' : ''}`}
                 >
                   {item.label}
                 </Link>
               </li>
             ))}
-            <li className="nav-item nav-item--chat">
-              <Link
-                to="/chat/123"
-                className={`nav-link${isActive(location, '/chat/') ? ' nav-link--active' : ''}`}
-              >
-                Чат
-              </Link>
-            </li>
+            {/* Чат не в навигации — нужен реальный matchId */}
           </ul>
         </nav>
         <button className="logout-button" onClick={handleLogout}>
