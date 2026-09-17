@@ -81,3 +81,20 @@
 
 **План:**
 Можно сделать конфигурируемым через пропсы или константы, если понадобится изменить.
+
+---
+
+## Redirect
+
+### Hardcoded origin in redirect validation (FIXED)
+
+**Статус:** Fixed in refactor commit
+
+**Что было:**
+В `resolve-redirect-target.ts` использовался хардкод origin `'https://matchmaker.local'`.
+
+**Что исправлено:**
+Теперь используется `window.location.origin` для текущего origin.
+
+**Урок:**
+Избегать хардкода URL и origin в коде. Использовать runtime-значения или environment variables.
