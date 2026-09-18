@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { CredentialsInput, User } from '../../shared/lib/auth/auth-types';
-import { AuthError } from '../../shared/lib/auth/auth-types';
+import { AuthError, type AuthService, type CredentialsInput, type User } from '../../shared/lib/auth/auth-types';
 import { mockAuthService } from '../../shared/lib/auth/mock-auth-service';
 
 type AuthContextValue = {
@@ -27,7 +26,13 @@ function getErrorMessage(error: unknown) {
   return 'Неизвестная ошибка авторизации';
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  authService = mockAuthService,
+}: {
+  children: ReactNode;
+  authService?: AuthService;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -37,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        const currentUser = await mockAuthService.getCurrentUser();
+        const currentUser = await authService.getCurrentUser();
 
         if (!active) {
           return;
@@ -76,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null);
 
         try {
-          const nextUser = await mockAuthService.login(input);
+          const nextUser = await authService.login(input);
           setUser(nextUser);
           return nextUser;
         } catch (error) {
@@ -88,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null);
 
         try {
-          const nextUser = await mockAuthService.register(input);
+          const nextUser = await authService.register(input);
           setUser(nextUser);
           return nextUser;
         } catch (error) {
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null);
 
         try {
-          await mockAuthService.logout();
+          await authService.logout();
           setUser(null);
         } catch (error) {
           setAuthError(getErrorMessage(error));

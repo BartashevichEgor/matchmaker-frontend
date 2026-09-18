@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { AuthProvider } from '../../app/providers/AuthProvider';
+import type { AuthService } from '../../shared/lib/auth/auth-types';
 
 // Мокаем сервис аутентификации, чтобы инициализация происходила синхронно
 vi.mock('../../shared/lib/auth/mock-auth-service', () => ({
@@ -51,17 +52,17 @@ describe('AppLayout', () => {
     
     // После мокания сервиса инициализация происходит синхронно
     expect(screen.getByText('Matchmaker')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Лента' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Проекты' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Мэтчи' })).toBeInTheDocument();
-    // Чат не в навигации — нужен реальный matchId для ссылки
+    expect(screen.getByRole('link', { name: 'Feed' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Projects' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Matches' })).toBeInTheDocument();
+    // Chat is not in navigation — need real matchId for the link
   });
 
   it('renders logout button when user is authenticated', () => {
     renderAppLayout(<div data-testid="child-content">Child content</div>);
     
-    expect(screen.getByRole('button', { name: 'Выход' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exit' })).toBeInTheDocument();
   });
 
   it('renders Outlet for children when user is authenticated', () => {
@@ -70,17 +71,14 @@ describe('AppLayout', () => {
     expect(screen.getByTestId('child-content')).toBeInTheDocument();
   });
 
-  it('logout calls logout and redirects to /', async () => {
+  it('logout delegates to the auth service', async () => {
     const user = userEvent.setup();
     renderAppLayout(<div data-testid="child-content">Child content</div>);
     
-    const logoutButton = screen.getByRole('button', { name: 'Выход' });
+    const logoutButton = screen.getByRole('button', { name: 'Exit' });
     await user.click(logoutButton);
     
-    // Проверяем, что произошел редирект
-    expect(window.location.pathname).toBe('/');
-    
-    // Проверяем, что logout был вызван
+    // Redirect after logout is handled by ProtectedRoute, not AppLayout.
     const { mockAuthService } = await import('../../shared/lib/auth/mock-auth-service');
     expect(mockAuthService.logout).toHaveBeenCalled();
   });
