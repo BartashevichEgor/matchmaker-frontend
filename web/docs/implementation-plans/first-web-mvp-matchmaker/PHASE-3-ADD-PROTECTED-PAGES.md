@@ -11,7 +11,7 @@
 - Обеспечить горизонтальную прокрутку навигации на мобильных устройствах без переполнения страницы.
 - Создать единый компонент-заглушку для `/feed`, `/projects`, `/profile`, `/matches`.
 - На странице `/chat/:matchId` отображать `matchId` вместе с общим шаблоном заглушки.
-- Подключить выход через `await logout()` и редирект на `/` с `replace`.
+- Подключить выход через `await logout()` и редирект на `/login` с `replace`.
 
 ## Detailed Requirements
 
@@ -39,7 +39,7 @@
 ### 4. Logout flow
 
 - Кнопка выхода должна вызывать `await logout()`.
-- После успешного logout layout должен делать redirect на `/` с `replace`.
+- После успешного logout защищённый маршрут должен отправлять пользователя на `/login` с `replace`.
 - Навигация после logout должна происходить только после завершения async операции.
 
 ## Implementation Steps
@@ -49,7 +49,7 @@
 3. Реализовать `SectionPlaceholder` как единый шаблон для protected pages.
 4. Подключить `/feed`, `/projects`, `/profile`, `/matches` к одному placeholder component.
 5. Подключить `/chat/:matchId` к тому же шаблону с отображением matchId.
-6. Добавить logout action, который завершает auth session и редиректит на `/`.
+6. Добавить logout action, который завершает auth session и редиректит на `/login`.
 
 ## Deliverables
 
@@ -62,5 +62,5 @@
 
 - Все protected routes рендерятся через общий layout.
 - Активная навигация работает.
-- Logout очищает сессию и возвращает на `/`.
+- Logout очищает сессию и возвращает на `/login`.
 - Mobile-навигция не ломает ширину страницы.
