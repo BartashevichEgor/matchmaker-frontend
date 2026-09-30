@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import { ProtectedRoute } from './ProtectedRoute';
+import type { AuthService, User } from '../../shared/lib/auth/auth-types';
 
 beforeEach(() => {
   localStorage.clear();
@@ -120,4 +121,70 @@ describe('AuthProvider', () => {
       Object.defineProperty(window, 'localStorage', originalStorage);
     }
   });
+
+  it('does not expose an unknown internal error message to the UI', async () => {
+    const authService = createAuthService(null);
+    authService.getCurrentUser = vi
+      .fn()
+      .mockRejectedValue(new Error('database password should never reach the browser UI'));
+
+    render(
+      <MemoryRouter>
+        <AuthProvider authService={authService}>
+          <AuthStatus />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText(/initialized: yes/i)).toBeInTheDocument());
+    expect(screen.getByText(/Не удалось выполнить операцию/i)).toBeInTheDocument();
+    expect(screen.queryByText(/database password/i)).not.toBeInTheDocument();
+  });
+
+  it('uses the latest auth service when the provider receives a replacement', async () => {
+    const firstUser = createUser('first@example.com');
+    const secondUser = createUser('second@example.com');
+    const firstService = createAuthService(firstUser);
+    const secondService = createAuthService(secondUser);
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <AuthProvider authService={firstService}>
+          <AuthStatus />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText(/user: first@example.com/i)).toBeInTheDocument());
+
+    rerender(
+      <MemoryRouter>
+        <AuthProvider authService={secondService}>
+          <AuthStatus />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText(/user: second@example.com/i)).toBeInTheDocument());
+    expect(secondService.getCurrentUser).toHaveBeenCalledTimes(1);
+  });
 });
+
+function createUser(email: string): User {
+  return {
+    id: email,
+    email,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+function createAuthService(currentUser: User | null): AuthService {
+  const fallbackUser = currentUser ?? createUser('fallback@example.com');
+
+  return {
+    getCurrentUser: vi.fn().mockResolvedValue(currentUser),
+    login: vi.fn().mockResolvedValue(fallbackUser),
+    register: vi.fn().mockResolvedValue(fallbackUser),
+    logout: vi.fn().mockResolvedValue(undefined),
+  };
+}

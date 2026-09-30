@@ -73,6 +73,23 @@ describe('AppRouter', () => {
     expect(screen.getByText(/matchId: abc/i)).toBeInTheDocument();
   });
 
+  it.each([
+    ['/projects', 'Проекты'],
+    ['/profile', 'Профиль'],
+    ['/matches', 'Мэтчи'],
+  ])('renders the protected placeholder for %s', async (path, heading) => {
+    setAuthenticatedUser();
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument());
+  });
+
   it('renders the public 404 page on unknown routes', async () => {
     render(
       <MemoryRouter initialEntries={['/unknown']}>

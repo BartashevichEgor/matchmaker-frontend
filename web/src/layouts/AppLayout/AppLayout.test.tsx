@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { AuthProvider } from '../../app/providers/AuthProvider';
+import { ProtectedRoute } from '../../app/providers/ProtectedRoute';
 import type { AuthService } from '../../shared/lib/auth/auth-types';
 
 // Мокаем сервис аутентификации, чтобы инициализация происходила синхронно
@@ -47,11 +48,10 @@ describe('AppLayout', () => {
     );
   }
 
-  it('renders header with logo and navigation when user is authenticated', () => {
+  it('renders header with logo and navigation when user is authenticated', async () => {
     renderAppLayout(<div data-testid="child-content">Child content</div>);
-    
-    // После мокания сервиса инициализация происходит синхронно
-    expect(screen.getByText('Matchmaker')).toBeInTheDocument();
+
+    await screen.findByText('Matchmaker');
     expect(screen.getByRole('link', { name: 'Feed' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Projects' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument();
@@ -59,27 +59,66 @@ describe('AppLayout', () => {
     // Chat is not in navigation — need real matchId for the link
   });
 
-  it('renders logout button when user is authenticated', () => {
+  it('renders logout button when user is authenticated', async () => {
     renderAppLayout(<div data-testid="child-content">Child content</div>);
-    
-    expect(screen.getByRole('button', { name: 'Exit' })).toBeInTheDocument();
+
+    expect(await screen.findByRole('button', { name: 'Exit' })).toBeInTheDocument();
   });
 
-  it('renders Outlet for children when user is authenticated', () => {
+  it('renders Outlet for children when user is authenticated', async () => {
     renderAppLayout(<div data-testid="child-content">Child content</div>);
-    
-    expect(screen.getByTestId('child-content')).toBeInTheDocument();
+
+    expect(await screen.findByTestId('child-content')).toBeInTheDocument();
   });
 
   it('logout delegates to the auth service', async () => {
     const user = userEvent.setup();
     renderAppLayout(<div data-testid="child-content">Child content</div>);
-    
-    const logoutButton = screen.getByRole('button', { name: 'Exit' });
+
+    const logoutButton = await screen.findByRole('button', { name: 'Exit' });
     await user.click(logoutButton);
-    
-    // Redirect after logout is handled by ProtectedRoute, not AppLayout.
+
     const { mockAuthService } = await import('../../shared/lib/auth/mock-auth-service');
     expect(mockAuthService.logout).toHaveBeenCalled();
+  });
+
+  it('shows a logout error instead of creating an unhandled rejection', async () => {
+    const user = userEvent.setup();
+    const { mockAuthService } = await import('../../shared/lib/auth/mock-auth-service');
+    vi.mocked(mockAuthService.logout).mockRejectedValueOnce(new Error('logout failed'));
+
+    renderAppLayout(<div data-testid="child-content">Child content</div>);
+
+    await user.click(await screen.findByRole('button', { name: 'Exit' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Не удалось выйти/i);
+  });
+
+  it('redirects to login after a successful logout in the protected router', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/feed']}>
+        <AuthProvider>
+          <Routes>
+            <Route
+              path="/feed"
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<div>Feed content</div>} />
+            </Route>
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Exit' }));
+
+    await waitFor(() => expect(screen.getByText('Login Page')).toBeInTheDocument());
   });
 });

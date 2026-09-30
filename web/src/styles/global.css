@@ -122,6 +122,9 @@ a {
 .auth-form__field {
   display: grid;
   gap: 8px;
+}
+
+.auth-form__field label {
   font-weight: 600;
 }
 
@@ -141,11 +144,16 @@ a {
   outline-offset: 2px;
 }
 
-.auth-form__alert {
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(213, 65, 65, 0.12);
-  color: #912b2b;
+.auth-form__field input[aria-invalid='true'] {
+  border-color: #d64545;
+  box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.12);
+}
+
+.auth-form__field-error,
+.auth-form__form-error {
+  margin: -2px 0 0;
+  color: #b42318;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -210,15 +218,30 @@ a {
   color: #2563eb;
 }
 
+.app-logo:focus-visible,
+.nav-link:focus-visible,
+.logout-button:focus-visible,
+.button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 3px;
+}
+
 .app-nav {
   flex: 1;
+  min-width: 0;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 0 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 .nav-list {
   display: flex;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  width: max-content;
   gap: 8px;
   list-style: none;
   margin: 0;
@@ -311,7 +334,8 @@ a {
 @media (max-width: 640px) {
   .header-container {
     padding: 0 16px;
-    height: 56px;
+    min-height: 56px;
+    height: auto;
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -322,11 +346,13 @@ a {
   }
   
   .app-nav {
-    margin: 8px 12px 0;
+    margin: 8px 0 0;
     order: 3;
-    flex: none;
+    flex: 0 0 100%;
     width: 100%;
-    justify-content: center;
+    max-width: 100%;
+    padding-bottom: 8px;
+    justify-content: flex-start;
   }
   
   .nav-list {

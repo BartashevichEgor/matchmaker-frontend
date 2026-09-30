@@ -3,7 +3,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { AuthForm } from '../../features/auth/ui/AuthForm';
 
 export function RegisterPage() {
-  const { user, isInitialized, authError, register } = useAuth();
+  const { user, isInitialized, authError, authErrorCode, clearAuthError, register } = useAuth();
   const navigate = useNavigate();
 
   if (isInitialized && user) {
@@ -25,6 +25,8 @@ export function RegisterPage() {
           submitLabel="Создать аккаунт"
           onSubmit={handleSubmit}
           externalError={authError}
+          externalErrorCode={authErrorCode}
+          onClearExternalError={clearAuthError}
         />
       </section>
     </main>

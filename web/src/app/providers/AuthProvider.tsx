@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AuthError, type AuthService, type CredentialsInput, type User } from '../../shared/lib/auth/auth-types';
+import {
+  AuthError,
+  type AuthErrorCode,
+  type AuthService,
+  type CredentialsInput,
+  type User,
+} from '../../shared/lib/auth/auth-types';
 import { mockAuthService } from '../../shared/lib/auth/mock-auth-service';
 
 type AuthContextValue = {
   user: User | null;
   isInitialized: boolean;
   authError: string | null;
+  authErrorCode: AuthErrorCode | null;
   login: (input: CredentialsInput) => Promise<User>;
   register: (input: CredentialsInput) => Promise<User>;
   logout: () => Promise<void>;
@@ -13,17 +20,18 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const SAFE_AUTH_ERROR_MESSAGE = 'Не удалось выполнить операцию. Попробуйте ещё раз.';
 
-function getErrorMessage(error: unknown) {
+function getErrorDetails(error: unknown): { code: AuthErrorCode | null; message: string } {
   if (error instanceof AuthError) {
-    return error.message;
+    return { code: error.code, message: error.message };
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return { code: null, message: SAFE_AUTH_ERROR_MESSAGE };
   }
 
-  return 'Неизвестная ошибка авторизации';
+  return { code: null, message: SAFE_AUTH_ERROR_MESSAGE };
 }
 
 export function AuthProvider({
@@ -36,6 +44,7 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authErrorCode, setAuthErrorCode] = useState<AuthErrorCode | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -50,13 +59,16 @@ export function AuthProvider({
 
         setUser(currentUser);
         setAuthError(null);
+        setAuthErrorCode(null);
       } catch (error) {
         if (!active) {
           return;
         }
 
         setUser(null);
-        setAuthError(getErrorMessage(error));
+        const details = getErrorDetails(error);
+        setAuthError(details.message);
+        setAuthErrorCode(details.code);
       } finally {
         if (active) {
           setIsInitialized(true);
@@ -69,51 +81,64 @@ export function AuthProvider({
     return () => {
       active = false;
     };
-  }, []);
+  }, [authService]);
 
   const contextValue = useMemo<AuthContextValue>(
     () => ({
       user,
       isInitialized,
       authError,
-      clearAuthError: () => setAuthError(null),
+      authErrorCode,
+      clearAuthError: () => {
+        setAuthError(null);
+        setAuthErrorCode(null);
+      },
       login: async (input: CredentialsInput) => {
         setAuthError(null);
+        setAuthErrorCode(null);
 
         try {
           const nextUser = await authService.login(input);
           setUser(nextUser);
           return nextUser;
         } catch (error) {
-          setAuthError(getErrorMessage(error));
+          const details = getErrorDetails(error);
+          setAuthError(details.message);
+          setAuthErrorCode(details.code);
           throw error;
         }
       },
       register: async (input: CredentialsInput) => {
         setAuthError(null);
+        setAuthErrorCode(null);
 
         try {
           const nextUser = await authService.register(input);
           setUser(nextUser);
           return nextUser;
         } catch (error) {
-          setAuthError(getErrorMessage(error));
+          const details = getErrorDetails(error);
+          setAuthError(details.message);
+          setAuthErrorCode(details.code);
           throw error;
         }
       },
       logout: async () => {
         setAuthError(null);
+        setAuthErrorCode(null);
 
         try {
           await authService.logout();
           setUser(null);
         } catch (error) {
-          setAuthError(getErrorMessage(error));
+          const details = getErrorDetails(error);
+          setAuthError(details.message);
+          setAuthErrorCode(details.code);
           throw error;
         }
       },
     }),
-    [authError, isInitialized, user],
+    [authError, authErrorCode, authService, isInitialized, user],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

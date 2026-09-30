@@ -4,7 +4,7 @@ import { AuthForm } from '../../features/auth/ui/AuthForm';
 import { resolveRedirectTarget, type RedirectState } from '../../features/auth/lib/resolve-redirect-target';
 
 export function LoginPage() {
-  const { user, isInitialized, authError, login } = useAuth();
+  const { user, isInitialized, authError, authErrorCode, clearAuthError, login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -29,6 +29,8 @@ export function LoginPage() {
           submitLabel="Войти"
           onSubmit={handleSubmit}
           externalError={authError}
+          externalErrorCode={authErrorCode}
+          onClearExternalError={clearAuthError}
         />
       </section>
     </main>

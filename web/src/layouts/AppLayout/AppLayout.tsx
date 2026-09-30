@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, Link, Outlet, type Location as RouterLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthProvider';
 
@@ -22,8 +23,27 @@ function isActive(location: RouterLocation, path: string, exact?: boolean): bool
 }
 
 export function AppLayout() {
-  const { logout } = useAuth();
+  const { logout, authError } = useAuth();
   const location = useLocation();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setLogoutError(null);
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } catch {
+      setLogoutError('Не удалось выйти из аккаунта. Попробуйте ещё раз.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div className="app-layout">
@@ -46,12 +66,23 @@ export function AppLayout() {
               ))}
             </ul>
           </nav>
-          <button className="logout-button" onClick={() => void logout()}>
-            Exit
+          <button
+            className="logout-button"
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+            aria-busy={isLoggingOut}
+          >
+            {isLoggingOut ? 'Выход...' : 'Exit'}
           </button>
         </div>
       </header>
       <main className="app-content">
+        {logoutError || authError ? (
+          <p className="auth-form__form-error" role="alert">
+            {logoutError ?? authError}
+          </p>
+        ) : null}
         <Outlet />
       </main>
     </div>

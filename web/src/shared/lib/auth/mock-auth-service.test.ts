@@ -23,6 +23,12 @@ describe('mockAuthService', () => {
     });
   });
 
+  it('validates credentials at the service boundary', async () => {
+    await expect(mockAuthService.register({ email: 'invalid-email', password: 'short' })).rejects.toMatchObject({
+      code: 'validation_error',
+    });
+  });
+
   it('logs in and logs out a user', async () => {
     await mockAuthService.register({ email: 'test@example.com', password: 'password123' });
     await mockAuthService.logout();

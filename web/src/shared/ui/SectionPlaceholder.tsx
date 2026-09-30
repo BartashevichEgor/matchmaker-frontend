@@ -10,7 +10,7 @@ export function SectionPlaceholder({ title, description, matchIdFromParams }: Se
   const params = useParams();
 
   return (
-    <main className="page-shell">
+    <div className="page-shell">
       <section className="section-card">
         <p className="section-badge">В разработке</p>
         <h1>{title}</h1>
@@ -19,6 +19,6 @@ export function SectionPlaceholder({ title, description, matchIdFromParams }: Se
           <p className="section-meta">matchId: {params.matchId}</p>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }

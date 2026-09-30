@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthProvider } from '../app/providers/AuthProvider';
@@ -23,7 +23,29 @@ describe('auth pages', () => {
 
     await user.click(screen.getByRole('button', { name: /войти/i }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/Введите email/i);
+    expect(screen.getByText(/Введите email/i)).toBeInTheDocument();
+  });
+
+  it('shows client validation errors under the corresponding fields', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
+    await user.type(screen.getByLabelText(/^пароль$/i), 'short');
+    await user.click(screen.getByRole('button', { name: /войти/i }));
+
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(/^пароль$/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText(/Введите корректный email/i)).toBeInTheDocument();
+    expect(screen.getByText(/Пароль должен содержать не менее 8 символов/i)).toBeInTheDocument();
+    expect(document.querySelector('.auth-form__alert')).not.toBeInTheDocument();
   });
 
   it('registers a user and redirects to feed', async () => {
@@ -90,6 +112,7 @@ describe('auth pages', () => {
       >
         <AuthProvider>
           <AppRouter />
+          <LocationProbe />
         </AuthProvider>
       </MemoryRouter>,
     );
@@ -99,6 +122,7 @@ describe('auth pages', () => {
     await user.click(screen.getByRole('button', { name: /войти/i }));
 
     await waitFor(() => expect(screen.getByText(/matchId: abc/i)).toBeInTheDocument());
+    expect(screen.getByTestId('current-location')).toHaveTextContent('/chat/abc?tab=info#messages');
   });
 
   it('redirects an authenticated user away from the login page', async () => {
@@ -146,6 +170,9 @@ describe('auth pages', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/Неверный email или пароль/i),
     );
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(/^пароль$/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(document.querySelector('.auth-form__alert')).not.toBeInTheDocument();
   });
 
   it('shows auth errors from the provider on the register form', async () => {
@@ -174,5 +201,19 @@ describe('auth pages', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/Пользователь с таким email уже существует/i),
     );
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(/^пароль$/i)).toHaveAttribute('aria-invalid', 'false');
   });
 });
+
+function LocationProbe() {
+  const location = useLocation();
+
+  return (
+    <output data-testid="current-location">
+      {location.pathname}
+      {location.search}
+      {location.hash}
+    </output>
+  );
+}
