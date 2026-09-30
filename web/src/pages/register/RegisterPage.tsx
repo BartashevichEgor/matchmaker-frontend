@@ -1,6 +1,7 @@
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { AuthForm } from '../../features/auth/ui/AuthForm';
+import { AuthPageLayout } from '../../layouts/AuthPageLayout/AuthPageLayout';
 
 export function RegisterPage() {
   const { user, isInitialized, authError, authErrorCode, clearAuthError, register } = useAuth();
@@ -16,19 +17,17 @@ export function RegisterPage() {
   };
 
   return (
-    <main className="page-shell">
-      <section className="section-card auth-page">
-        <AuthForm
-          mode="register"
-          title="Создать аккаунт"
-          description="Зарегистрируйтесь, чтобы сразу получить локальную mock-сессию."
-          submitLabel="Создать аккаунт"
-          onSubmit={handleSubmit}
-          externalError={authError}
-          externalErrorCode={authErrorCode}
-          onClearExternalError={clearAuthError}
-        />
-      </section>
-    </main>
+    <AuthPageLayout>
+      <AuthForm
+        mode="register"
+        title="Создать аккаунт"
+        description="Зарегистрируйтесь, чтобы сразу получить локальную mock-сессию."
+        submitLabel="Создать аккаунт"
+        onSubmit={handleSubmit}
+        externalError={authError}
+        externalErrorCode={authErrorCode}
+        onClearExternalError={clearAuthError}
+      />
+    </AuthPageLayout>
   );
 }

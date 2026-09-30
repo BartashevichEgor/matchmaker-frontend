@@ -10,6 +10,20 @@ beforeEach(() => {
 });
 
 describe('auth pages', () => {
+  it('renders login inside a two-panel auth layout', async () => {
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('region', { name: 'Презентационная панель' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Люди и проекты, которые подходят друг другу/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Войти в аккаунт/i })).toBeInTheDocument();
+  });
+
   it('shows validation errors on the login form', async () => {
     const user = userEvent.setup();
 
