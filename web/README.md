@@ -4,6 +4,8 @@
 
 ## Запуск
 
+Требуется Node.js 20 или новее.
+
 ```bash
 npm install
 npm run dev
