@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { ZodIssue } from 'zod';
 import type { AuthErrorCode, CredentialsInput } from '../../../shared/lib/auth/auth-types';
 import { credentialsSchema, registerFormSchema } from '../../../shared/lib/auth/auth-schemas';
@@ -137,7 +138,6 @@ export function AuthForm({
   return (
     <form className="auth-form" onSubmit={handleSubmit} noValidate>
       <div className="auth-form__header">
-        <p className="section-badge">{mode === 'login' ? 'Вход' : 'Регистрация'}</p>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
@@ -210,6 +210,15 @@ export function AuthForm({
       <button className="button button-primary auth-form__submit" type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Отправка...' : submitLabel}
       </button>
+
+      {mode === 'login' ? (
+        <p className="auth-form__switch">
+          Нет аккаунта?{' '}
+          <Link className="auth-form__switch-link" to="/register">
+            Зарегистрироваться
+          </Link>
+        </p>
+      ) : null}
     </form>
   );
 }

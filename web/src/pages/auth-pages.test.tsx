@@ -22,6 +22,8 @@ describe('auth pages', () => {
     expect(await screen.findByRole('region', { name: 'Презентационная панель' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Люди и проекты, которые подходят друг другу/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Войти в аккаунт/i })).toBeInTheDocument();
+    expect(screen.queryByText('Вход', { selector: '.section-badge' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Зарегистрироваться' })).toHaveAttribute('href', '/register');
   });
 
   it('shows validation errors on the login form', async () => {
@@ -73,6 +75,7 @@ describe('auth pages', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.queryByText('Регистрация', { selector: '.section-badge' })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText(/email/i), 'new@example.com');
     await user.type(screen.getByLabelText(/^пароль$/i), 'password123');
     await user.type(screen.getByLabelText(/подтвердите пароль/i), 'password123');
