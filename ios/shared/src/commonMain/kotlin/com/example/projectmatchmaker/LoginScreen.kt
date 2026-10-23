@@ -2,8 +2,10 @@ package com.example.projectmatchmaker
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,9 +21,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.launch
 
 @Composable
-@Preview
 fun LoginScreen(
     onNavigateToRegister: () -> Unit = {},
+    onForgotPassword: () -> Unit = {},
     onLogin: suspend (email: String, password: String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
     onAuthenticated: () -> Unit = {},
 ) {
@@ -46,7 +48,11 @@ fun LoginScreen(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 440.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
         ) {
             Text(
                 text = "Matchmaker",
@@ -131,8 +137,8 @@ fun LoginScreen(
                             singleLine = true,
                             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                                    Text(if (isPasswordVisible) "👁" else "🙈")
+                                PasswordVisibilityButton(isPasswordVisible) {
+                                    isPasswordVisible = !isPasswordVisible
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -149,7 +155,7 @@ fun LoginScreen(
 
                     // Забыли пароль
                     TextButton(
-                        onClick = { },
+                        onClick = onForgotPassword,
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Text(
@@ -231,4 +237,10 @@ fun LoginScreen(
             }
         }
     }
+}
+
+@Preview(name = "Вход · телефон", widthDp = 390, heightDp = 844, showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    MaterialTheme { LoginScreen() }
 }

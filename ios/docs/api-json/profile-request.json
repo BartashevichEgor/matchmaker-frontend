@@ -1,0 +1,10 @@
+{
+  "first_name": "Алина",
+  "last_name": "Иванова",
+  "bio": "Разрабатываю мобильные приложения на Kotlin Multiplatform.",
+  "birth_date": "2005-04-15",
+  "github_url": "https://github.com/example",
+  "experience": "Учебные и командные проекты",
+  "interests": "Мобильная разработка, командные проекты",
+  "role_id": 3
+}

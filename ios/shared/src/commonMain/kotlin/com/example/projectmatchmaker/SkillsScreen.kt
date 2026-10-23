@@ -1,16 +1,14 @@
 package com.example.projectmatchmaker
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,90 +28,106 @@ fun SkillsScreen(
     canCreate: Boolean,
     onBack: () -> Unit,
     onCreate: () -> Unit,
+    onEducationSelect: () -> Unit,
     onCatalog: () -> Unit,
+    onMatches: () -> Unit = {},
+    onChats: () -> Unit = {},
 ) {
     var skillText by remember { mutableStateOf("") }
-    var experienceExpanded by remember { mutableStateOf(true) }
-    var linksExpanded by remember { mutableStateOf(false) }
+    var coursesExpanded by remember { mutableStateOf(false) }
 
-    ScreenFrame(MainDestination.PROFILE, onCatalog, {}) {
+    ScreenFrame(
+        selected = MainDestination.PROFILE,
+        onCatalog = onCatalog,
+        onProfile = {},
+        onMatches = onMatches,
+        onChats = onChats,
+    ) {
         PageCard {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-                PageTitle("Создание профиля")
-                Text("Шаг 2 из 2 · Навыки и опыт", color = MutedTextColor, fontSize = 14.sp)
-                StepProgress(1f)
+            Column(Modifier.fillMaxSize().padding(12.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                    PageTitle("Создание профиля")
+                    Text("Шаг 2 из 2 · Навыки и образование", color = MutedTextColor, fontSize = 12.sp)
+                    StepProgress(1f)
 
-                FormLabel("Навыки *")
-                if (profile.skills.isNotEmpty()) {
-                    SkillChips(profile.skills) { removed ->
-                        onProfileChange(profile.copy(skills = profile.skills - removed))
+                    FormLabel("Навыки *")
+                    if (profile.skills.isNotEmpty()) {
+                        SkillChips(profile.skills) { removed ->
+                            onProfileChange(profile.copy(skills = profile.skills - removed))
+                        }
                     }
-                }
-                Box(Modifier.padding(top = 8.dp)) {
-                    FormField(skillText, { skillText = it }, "Добавить навык")
-                    Text(
-                        "+",
-                        color = PrimaryButtonColor,
-                        fontSize = 34.sp,
-                        modifier = Modifier.align(Alignment.CenterEnd).clickable {
-                            val skill = skillText.trim()
-                            if (skill.isNotEmpty() && profile.skills.none { it.equals(skill, true) }) {
-                                onProfileChange(profile.copy(skills = profile.skills + skill))
-                                skillText = ""
-                            }
-                        }.padding(horizontal = 15.dp),
-                    )
-                }
-                Text("Нажмите × на навыке, чтобы удалить его", color = MutedTextColor, fontSize = 11.sp)
+                    Box(Modifier.padding(top = 4.dp)) {
+                        FormField(skillText, { skillText = it }, "Добавить навык")
+                        Text(
+                            "+",
+                            color = PrimaryButtonColor,
+                            fontSize = 30.sp,
+                            modifier = Modifier.align(Alignment.CenterEnd).clickable {
+                                val skill = skillText.trim()
+                                if (skill.isNotEmpty() && profile.skills.none { it.equals(skill, true) }) {
+                                    onProfileChange(profile.copy(skills = profile.skills + skill))
+                                    skillText = ""
+                                }
+                            }.padding(horizontal = 15.dp),
+                        )
+                    }
 
-                ExpandableHeader("Опыт и образование", experienceExpanded) {
-                    experienceExpanded = !experienceExpanded
-                }
-                if (experienceExpanded) {
                     FormLabel("Опыт работы")
                     FormField(
                         profile.experience,
                         { onProfileChange(profile.copy(experience = it)) },
-                        "Например, учебные и личные проекты",
+                        "Учебные и личные проекты",
                     )
-                    FormLabel("Образование")
-                    FormField(
-                        profile.education,
-                        { onProfileChange(profile.copy(education = it)) },
-                        "Например, студентка БГУ",
+
+                    ExpandableHeader(
+                        profile.education.ifBlank { "Образование" },
+                        expanded = false,
+                        onClick = onEducationSelect,
                     )
+                    ExpandableHeader("Курсы и сертификаты", coursesExpanded) {
+                        coursesExpanded = !coursesExpanded
+                    }
+                    if (coursesExpanded) {
+                        Text(
+                            "Этот раздел можно заполнить позже",
+                            color = MutedTextColor,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                ExpandableHeader("GitHub и ссылки", linksExpanded) {
-                    linksExpanded = !linksExpanded
-                }
-                if (linksExpanded) {
-                    FormField(
-                        profile.github,
-                        { onProfileChange(profile.copy(github = it)) },
-                        "https://github.com/username",
-                    )
-                }
-
-                Text(
-                    if (canCreate) "Профиль готов к созданию" else "Добавьте хотя бы один навык",
-                    color = if (canCreate) MutedTextColor else ErrorColor,
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(vertical = 10.dp),
-                )
-                PrimaryButton("Создать профиль", onCreate, canCreate)
-                TextButton(onClick = onBack, contentPadding = PaddingValues(vertical = 8.dp)) {
-                    Text("Назад к основному", color = PrimaryButtonColor)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = onBack,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PanelBgColor),
+                        border = BorderStroke(1.dp, BorderColor),
+                    ) {
+                        Text("Назад", color = PrimaryButtonColor, fontWeight = FontWeight.Bold)
+                    }
+                    Box(Modifier.weight(2f)) {
+                        PrimaryButton("Сохранить профиль", onCreate, canCreate)
+                    }
                 }
             }
         }
     }
 }
 
+@Preview(name = "Профиль · шаг 2", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
-@Preview
-private fun SkillsScreenPreview() {
+fun SkillsScreenPreview() {
     MaterialTheme {
-        SkillsScreen(ProfileData(), {}, false, {}, {}, {})
+        SkillsScreen(
+            ProfileData(skills = listOf("Figma", "UX", "Mermaid"), experience = "Учебные и личные проекты"),
+            {},
+            true,
+            {},
+            {},
+            {},
+            {},
+        )
     }
 }

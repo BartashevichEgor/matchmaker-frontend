@@ -13,13 +13,17 @@ class AuthRepository(
         TokenStorage.saveToken(token)
     }
 
-    suspend fun register(name: String, email: String, password: String): Result<String> = authRequest {
-        api.register(name, email, password)
-        email.trim()
+    suspend fun register(username: String, email: String, password: String): Result<Unit> = authRequest {
+        // Backend требует подтвердить email перед первым входом.
+        api.register(username, email, password)
     }
 
     suspend fun verifyEmail(email: String, code: String): Result<Unit> = authRequest {
         api.verifyEmail(email, code)
+    }
+
+    suspend fun resendVerification(email: String): Result<Unit> = authRequest {
+        api.resendVerification(email)
     }
 
     fun logout() {
@@ -30,8 +34,9 @@ class AuthRepository(
         api.close()
     }
 
-    private suspend fun <T> authRequest(block: suspend () -> T): Result<T> = try {
-        Result.success(block())
+    private suspend fun authRequest(block: suspend () -> Unit): Result<Unit> = try {
+        block()
+        Result.success(Unit)
     } catch (error: Throwable) {
         val technicalMessage = error.message.orEmpty()
         val userMessage = when {

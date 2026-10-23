@@ -1,0 +1,6 @@
+{
+  "skills": [
+    { "skill_id": 1, "level": 4 },
+    { "skill_id": 3, "level": 3 }
+  ]
+}

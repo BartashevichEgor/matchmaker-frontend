@@ -39,10 +39,15 @@ import androidx.compose.ui.unit.sp
 private enum class CatalogTab { PROJECTS, PEOPLE }
 
 @Composable
-fun CatalogScreen(onCatalog: () -> Unit, onProfile: () -> Unit) {
+fun CatalogScreen(
+    onCatalog: () -> Unit,
+    onProfile: () -> Unit,
+    onMatches: () -> Unit,
+    onChats: () -> Unit,
+) {
     var tab by remember { mutableStateOf(CatalogTab.PEOPLE) }
 
-    ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile) {
+    ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
             Column(Modifier.fillMaxSize().padding(14.dp)) {
                 Row(
@@ -53,6 +58,12 @@ fun CatalogScreen(onCatalog: () -> Unit, onProfile: () -> Unit) {
                     PageTitle("Каталог")
                     FilterIcon()
                 }
+                Text(
+                    "Находи людей и проекты для своей команды",
+                    color = MutedTextColor,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
                 CatalogTabs(tab) { tab = it }
                 Spacer(Modifier.height(16.dp))
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -67,8 +78,8 @@ fun CatalogScreen(onCatalog: () -> Unit, onProfile: () -> Unit) {
 @Composable
 private fun CatalogTabs(selected: CatalogTab, onSelect: (CatalogTab) -> Unit) {
     Row(Modifier.fillMaxWidth().background(SectionBgColor, RoundedCornerShape(12.dp)).padding(3.dp)) {
-        CatalogTabButton("Проекты", selected == CatalogTab.PROJECTS, Modifier.weight(1f)) { onSelect(CatalogTab.PROJECTS) }
         CatalogTabButton("Специалисты", selected == CatalogTab.PEOPLE, Modifier.weight(1f)) { onSelect(CatalogTab.PEOPLE) }
+        CatalogTabButton("Проекты", selected == CatalogTab.PROJECTS, Modifier.weight(1f)) { onSelect(CatalogTab.PROJECTS) }
     }
 }
 
@@ -86,15 +97,15 @@ private fun CatalogTabButton(text: String, selected: Boolean, modifier: Modifier
 
 @Composable
 private fun PersonCatalogCard() {
-    Surface(color = Color(0xFFF6EDCC), shape = RoundedCornerShape(24.dp)) {
+    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Box(
-                Modifier.fillMaxWidth().height(178.dp).background(ProfileAvatarColor, RoundedCornerShape(18.dp)),
+                Modifier.fillMaxWidth().height(112.dp).background(ProfileAvatarColor, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Surface(color = CardBgColor, shape = CircleShape, modifier = Modifier.size(82.dp)) {
+                Surface(color = ProfileAvatarColor, shape = CircleShape, modifier = Modifier.size(60.dp)) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("АК", color = PrimaryButtonColor, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        Text("АК", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Surface(
@@ -105,18 +116,17 @@ private fun PersonCatalogCard() {
                     Text("87% совпадение", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
                 }
             }
-            Text("Алексей Ковалёв", color = TextDarkColor, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-            Text("Backend-разработчик", color = MutedTextColor, fontSize = 17.sp, modifier = Modifier.padding(vertical = 6.dp))
+            Text("Алексей Ковалёв", color = TextDarkColor, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp))
+            Text("Backend-разработчик", color = MutedTextColor, fontSize = 15.sp, modifier = Modifier.padding(vertical = 4.dp))
             SkillChips(listOf("Python", "Django", "SQL"))
-            Text("Люблю чистый код. Ищу команду для полезного проекта.", color = TextDarkColor, fontSize = 16.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 12.dp))
         }
     }
-    ExpandableHeader("Опыт и GitHub", false) { }
+    ExpandableHeader("О себе", false) { }
 }
 
 @Composable
 private fun ProjectCatalogCard() {
-    Surface(color = Color(0xFFF6EDCC), shape = RoundedCornerShape(24.dp)) {
+    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Box(
                 Modifier.fillMaxWidth().height(145.dp).background(SectionBgColor, RoundedCornerShape(18.dp)).padding(20.dp),
@@ -172,8 +182,8 @@ private fun FilterIcon() {
     }
 }
 
+@Preview(name = "Каталог · телефон", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
-@Preview
-private fun CatalogScreenPreview() {
-    MaterialTheme { CatalogScreen({}, {}) }
+fun CatalogScreenPreview() {
+    MaterialTheme { CatalogScreen({}, {}, {}, {}) }
 }

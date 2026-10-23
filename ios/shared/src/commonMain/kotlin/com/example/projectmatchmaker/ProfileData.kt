@@ -1,8 +1,10 @@
 package com.example.projectmatchmaker
 
 data class ProfileData(
-    val name: String = "",
+    val username: String = "",
     val email: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
     val role: String = "",
     val about: String = "",
     val skills: List<String> = emptyList(),
@@ -10,8 +12,6 @@ data class ProfileData(
     val education: String = "",
     val github: String = "",
 ) {
-    val username: String
-        get() = email.substringBefore("@").ifBlank {
-            name.trim().substringBefore(" ").lowercase().ifBlank { "user" }
-        }
+    val name: String
+        get() = listOf(firstName.trim(), lastName.trim()).filter { it.isNotBlank() }.joinToString(" ")
 }
