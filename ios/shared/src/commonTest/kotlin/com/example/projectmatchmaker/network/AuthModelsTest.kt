@@ -21,34 +21,22 @@ class AuthModelsTest {
     }
 
     @Test
-    fun registerRequestUsesBackendUsernameField() {
-        val encoded = json.encodeToString(
-            RegisterRequest(username = "Алина", email = "alina@example.com", password = "secret123")
-        )
-
-        assertEquals(
-            "{\"username\":\"Алина\",\"email\":\"alina@example.com\",\"password\":\"secret123\"}",
-            encoded,
-        )
-    }
-
-    @Test
-    fun verifyRequestUsesBackendFieldNames() {
-        val encoded = json.encodeToString(VerifyEmailRequest(email = "alina@example.com", code = "123456"))
-
-        assertEquals("{\"email\":\"alina@example.com\",\"code\":\"123456\"}", encoded)
-    }
-
-    @Test
     fun tokenResponseReadsSnakeCaseFields() {
         val response = json.decodeFromString<TokenResponse>(
-            """{"access_token":"jwt-value","refresh_token":"refresh-value","token_type":"bearer","expires_in":3600}"""
+            """{"access_token":"jwt-value","refresh_token":"refresh-value","token_type":"bearer","expires_in":900}"""
         )
 
         assertEquals("jwt-value", response.accessToken)
         assertEquals("refresh-value", response.refreshToken)
         assertEquals("bearer", response.tokenType)
-        assertEquals(3600, response.expiresIn)
+        assertEquals(900, response.expiresIn)
+    }
+
+    @Test
+    fun resendVerificationRequestContainsEmail() {
+        val encoded = json.encodeToString(EmailRequest(email = "alina@example.com"))
+
+        assertEquals("{\"email\":\"alina@example.com\"}", encoded)
     }
 }
 

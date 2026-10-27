@@ -31,8 +31,17 @@ data class TokenResponse(
 )
 
 @Serializable
-data class ApiErrorResponse(
-    val detail: String? = null,
-    val message: String? = null,
+data class MessageResponse(
+    val message: String,
+)
+
+@Serializable
+data class EmailRequest(
+    val email: String,
+)
+
+@Serializable
+data class RefreshTokenRequest(
+    @SerialName("refresh_token") val refreshToken: String,
 )
 

@@ -1,0 +1,6 @@
+{
+  "access_token": "example.jwt.token",
+  "refresh_token": "example.refresh.token",
+  "token_type": "bearer",
+  "expires_in": 900
+}

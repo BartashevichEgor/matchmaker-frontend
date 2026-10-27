@@ -2,8 +2,10 @@ package com.example.projectmatchmaker
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,13 +21,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.launch
 
 @Composable
-@Preview
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit = {},
-    onRegister: suspend (name: String, email: String, password: String) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
+    onRegister: suspend (username: String, email: String, password: String) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
     onAuthenticated: () -> Unit = {},
 ) {
-    var userName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -37,13 +38,13 @@ fun RegisterScreen(
     val scope = rememberCoroutineScope()
 
     // Валидация
-    val isNameValid = userName.isEmpty() || userName.length >= 2
+    val isUsernameValid = username.isEmpty() || username.length >= 2
     val isEmailValid = email.isEmpty() || (email.contains("@") && email.contains("."))
     val isPasswordValid = password.isEmpty() || password.length >= 8
     val doPasswordsMatch = confirmPassword.isEmpty() || password == confirmPassword
 
-    val canRegister = userName.isNotBlank() && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() &&
-            isNameValid && isEmailValid && isPasswordValid && doPasswordsMatch
+    val canRegister = username.isNotBlank() && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() &&
+            isUsernameValid && isEmailValid && isPasswordValid && doPasswordsMatch
 
     Box(
         modifier = Modifier
@@ -53,7 +54,11 @@ fun RegisterScreen(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 440.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
         ) {
             Text(
                 text = "Matchmaker",
@@ -89,11 +94,11 @@ fun RegisterScreen(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                         OutlinedTextField(
-                            value = userName,
-                            onValueChange = { userName = it },
+                            value = username,
+                            onValueChange = { username = it },
                             placeholder = { Text("username", color = Color.Gray) },
                             singleLine = true,
-                            isError = !isNameValid,
+                            isError = !isUsernameValid,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
@@ -105,7 +110,7 @@ fun RegisterScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        if (!isNameValid) {
+                        if (!isUsernameValid) {
                             Text(
                                 text = "Имя пользователя должно быть не короче 2 символов",
                                 color = ErrorColor,
@@ -175,8 +180,8 @@ fun RegisterScreen(
                             singleLine = true,
                             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                                    Text(if (isPasswordVisible) "👁" else "🙈")
+                                PasswordVisibilityButton(isPasswordVisible) {
+                                    isPasswordVisible = !isPasswordVisible
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -212,8 +217,8 @@ fun RegisterScreen(
                                 if (!doPasswordsMatch) {
                                     Text("❗", fontSize = 14.sp)
                                 } else {
-                                    IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
-                                        Text(if (isConfirmPasswordVisible) "👁" else "🙈")
+                                    PasswordVisibilityButton(isConfirmPasswordVisible) {
+                                        isConfirmPasswordVisible = !isConfirmPasswordVisible
                                     }
                                 }
                             },
@@ -247,7 +252,7 @@ fun RegisterScreen(
                             serverError = null
                             scope.launch {
                                 isLoading = true
-                                val result = onRegister(userName, email, password)
+                                val result = onRegister(username, email, password)
                                 isLoading = false
 
                                 result.onSuccess { onAuthenticated() }
@@ -311,4 +316,10 @@ fun RegisterScreen(
             }
         }
     }
+}
+
+@Preview(name = "Регистрация · телефон", widthDp = 390, heightDp = 844, showBackground = true)
+@Composable
+fun RegisterScreenPreview() {
+    MaterialTheme { RegisterScreen() }
 }
