@@ -1,17 +1,9 @@
 package com.example.projectmatchmaker
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -42,77 +35,115 @@ fun ProfileScreen(
 ) {
     var educationExpanded by remember { mutableStateOf(false) }
 
-    ScreenFrame(
-        selected = MainDestination.PROFILE,
-        onCatalog = onCatalog,
-        onProfile = {},
-        onMatches = onMatches,
-        onChats = onChats,
-    ) {
+    ScreenFrame(MainDestination.PROFILE, onCatalog, {}, onMatches, onChats) {
         PageCard {
             Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
                 PageTitle("Мой профиль")
-                Spacer(Modifier.height(14.dp))
 
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box(
                         Modifier.size(76.dp).background(ProfileAvatarColor, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(initials(profile.name), color = CardBgColor, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            initials(profile.name),
+                            color = CardBgColor,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
-                    Column(Modifier.padding(start = 16.dp)) {
+                    Column(Modifier.padding(start = 18.dp)) {
                         Text(
                             profile.name.ifBlank { "Имя не заполнено" },
                             color = TextDarkColor,
-                            fontSize = 19.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "@" + profile.username.ifBlank { "username" },
                             color = MutedTextColor,
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 3.dp),
                         )
-                        Text(profile.role.ifBlank { "Роль не выбрана" }, color = TextDarkColor, fontSize = 15.sp)
+                        Text(
+                            profile.role.ifBlank { "Роль не выбрана" },
+                            color = TextDarkColor,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
                     }
                 }
 
                 Surface(
                     color = PanelBgColor,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 20.dp).clickable(onClick = onFavorites),
+                    modifier = Modifier.fillMaxWidth().padding(top = 18.dp).clickable(onClick = onFavorites),
                 ) {
-                    Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("♡", color = PrimaryButtonColor, fontSize = 27.sp)
-                        Column(Modifier.padding(start = 12.dp)) {
-                            Text("Избранное", color = TextDarkColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text("Сохранённые анкеты и проекты", color = MutedTextColor, fontSize = 12.sp)
+                    Row(
+                        Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BookmarkButton(saved = false, onClick = onFavorites, modifier = Modifier.size(27.dp))
+                        Column(Modifier.padding(start = 10.dp)) {
+                            Text(
+                                "Избранное",
+                                color = TextDarkColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                "Сохранённые анкеты и проекты",
+                                color = MutedTextColor,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
                         }
                     }
                 }
 
                 Surface(
-                    color = PanelBgColor,
-                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Transparent,
+                    shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, BorderColor),
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onEdit),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clickable(onClick = onEdit),
                 ) {
-                    Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
-                        Text("Редактировать профиль", color = PrimaryButtonColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Box(Modifier.height(46.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            "Редактировать профиль",
+                            color = PrimaryButtonColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
 
-                FormLabel("О себе")
+                Text(
+                    "О себе",
+                    color = TextDarkColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
+                )
                 Text(
                     profile.about.ifBlank { "Описание пока не заполнено" },
                     color = if (profile.about.isBlank()) MutedTextColor else TextDarkColor,
-                    fontSize = 15.sp,
-                    lineHeight = 21.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
                 )
 
-                FormLabel("Навыки")
+                Text(
+                    "Навыки",
+                    color = TextDarkColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 18.dp, bottom = 3.dp),
+                )
                 SkillChips(profile.skills)
 
                 ExpandableHeader("Образование и курсы", educationExpanded) {
@@ -120,9 +151,12 @@ fun ProfileScreen(
                 }
                 if (educationExpanded) {
                     Text(
-                        profile.education.ifBlank { "Не указано" },
+                        listOf(profile.education, profile.experience)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" · ")
+                            .ifBlank { "Не указано" },
                         color = MutedTextColor,
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         modifier = Modifier.padding(12.dp),
                     )
                 }
@@ -132,16 +166,15 @@ fun ProfileScreen(
 }
 
 private val previewProfile = ProfileData(
-    username = "alina",
-    firstName = "Алина",
-    lastName = "Иванова",
-    email = "alina@example.com",
-    role = "iOS-разработчик",
-    about = "Разрабатываю мобильные интерфейсы на Kotlin и Compose Multiplatform.",
-    skills = listOf("Kotlin", "KMP", "Figma"),
-    experience = "Учебный проект Project Matchmaker",
-    education = "Студентка",
-    github = "https://github.com/alina",
+    username = "veronika",
+    firstName = "Вероника",
+    lastName = "Соболь",
+    email = "veronika@example.com",
+    role = "UI/UX-дизайнер",
+    about = "Создаю понятные интерфейсы. Ищу команду для полезного проекта.",
+    skills = listOf("Figma", "UX", "Mermaid"),
+    experience = "Учебные и личные проекты",
+    education = "Студентка · дизайн интерфейсов",
 )
 
 @Preview(name = "Мой профиль · телефон", widthDp = 390, heightDp = 844, showBackground = true)

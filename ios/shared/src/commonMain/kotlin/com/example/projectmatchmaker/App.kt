@@ -34,6 +34,7 @@ private enum class AppScreen {
 fun App(useBackend: Boolean = true) {
     var screen by remember { mutableStateOf(AppScreen.LOGIN) }
     var profile by remember { mutableStateOf(ProfileData()) }
+    var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }
     val authRepository = remember(useBackend) { if (useBackend) AuthRepository() else null }
 
     DisposableEffect(authRepository) {
@@ -150,6 +151,10 @@ fun App(useBackend: Boolean = true) {
             )
 
             AppScreen.FAVORITES -> FavoritesScreen(
+                favorites = favorites,
+                onFavoriteToggle = { item ->
+                    favorites = if (item in favorites) favorites - item else favorites + item
+                },
                 onBackToProfile = { screen = AppScreen.PROFILE },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
@@ -157,6 +162,10 @@ fun App(useBackend: Boolean = true) {
             )
 
             AppScreen.CATALOG -> CatalogScreen(
+                favorites = favorites,
+                onFavoriteToggle = { item ->
+                    favorites = if (item in favorites) favorites - item else favorites + item
+                },
                 onCatalog = openCatalog,
                 onProfile = openProfile,
                 onMatches = openMatches,

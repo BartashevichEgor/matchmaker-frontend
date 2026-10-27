@@ -4,16 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,34 +33,34 @@ private enum class CatalogTab { PROJECTS, PEOPLE }
 
 @Composable
 fun CatalogScreen(
+    favorites: Set<FavoriteItem> = emptySet(),
+    onFavoriteToggle: (FavoriteItem) -> Unit = {},
+    showProjectsInitially: Boolean = false,
     onCatalog: () -> Unit,
     onProfile: () -> Unit,
     onMatches: () -> Unit,
     onChats: () -> Unit,
 ) {
-    var tab by remember { mutableStateOf(CatalogTab.PEOPLE) }
-
+    var tab by remember {
+        mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
+    }
     ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(14.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     PageTitle("Каталог")
                     FilterIcon()
                 }
-                Text(
-                    "Находи людей и проекты для своей команды",
-                    color = MutedTextColor,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
+                Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
                 CatalogTabs(tab) { tab = it }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    if (tab == CatalogTab.PEOPLE) PersonCatalogCard() else ProjectCatalogCard()
+                    if (tab == CatalogTab.PEOPLE) {
+                        PersonCatalogCard(FavoriteItem.PERSON in favorites) { onFavoriteToggle(FavoriteItem.PERSON) }
+                    } else {
+                        ProjectCatalogCard(FavoriteItem.PROJECT in favorites) { onFavoriteToggle(FavoriteItem.PROJECT) }
+                    }
+                    Text("Закладка — сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                 }
                 SwipeActions()
             }
@@ -77,7 +70,7 @@ fun CatalogScreen(
 
 @Composable
 private fun CatalogTabs(selected: CatalogTab, onSelect: (CatalogTab) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(SectionBgColor, RoundedCornerShape(12.dp)).padding(3.dp)) {
+    Row(Modifier.fillMaxWidth().height(44.dp).background(SectionBgColor, RoundedCornerShape(12.dp)).padding(3.dp)) {
         CatalogTabButton("Специалисты", selected == CatalogTab.PEOPLE, Modifier.weight(1f)) { onSelect(CatalogTab.PEOPLE) }
         CatalogTabButton("Проекты", selected == CatalogTab.PROJECTS, Modifier.weight(1f)) { onSelect(CatalogTab.PROJECTS) }
     }
@@ -86,98 +79,129 @@ private fun CatalogTabs(selected: CatalogTab, onSelect: (CatalogTab) -> Unit) {
 @Composable
 private fun CatalogTabButton(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Box(
-        modifier.height(42.dp)
-            .background(if (selected) PrimaryButtonColor else Color.Transparent, RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick),
+        modifier.fillMaxHeight().background(if (selected) PrimaryButtonColor else Color.Transparent, RoundedCornerShape(9.dp)).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (selected) CardBgColor else TextDarkColor, fontWeight = FontWeight.Bold)
+        Text(text, color = if (selected) CardBgColor else TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun PersonCatalogCard() {
-    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp)) {
+private fun PersonCatalogCard(saved: Boolean, onSave: () -> Unit) {
+    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Box(
-                Modifier.fillMaxWidth().height(112.dp).background(ProfileAvatarColor, RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Surface(color = ProfileAvatarColor, shape = CircleShape, modifier = Modifier.size(60.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("АК", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    }
+            Box(Modifier.fillMaxWidth().height(112.dp).background(ProfileAvatarColor, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Surface(color = PrimaryButtonColor, shape = RoundedCornerShape(16.dp), modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) {
+                    Text("87% совпадение", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 5.dp))
                 }
-                Surface(
-                    color = PrimaryButtonColor,
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
-                ) {
-                    Text("87% совпадение", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
-                }
+                Text("АК", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             }
-            Text("Алексей Ковалёв", color = TextDarkColor, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp))
-            Text("Backend-разработчик", color = MutedTextColor, fontSize = 15.sp, modifier = Modifier.padding(vertical = 4.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Алексей Ковалёв", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                BookmarkButton(saved, onSave)
+            }
+            Text("Backend-разработчик", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             SkillChips(listOf("Python", "Django", "SQL"))
+            ExpandableHeader("О себе", false) {}
+            Surface(
+                color = Color.Transparent,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, BorderColor),
+                modifier = Modifier.padding(top = 12.dp).clickable { },
+            ) {
+                Text("Открыть анкету", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
+            }
         }
     }
-    ExpandableHeader("О себе", false) { }
 }
 
 @Composable
-private fun ProjectCatalogCard() {
-    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp)) {
+private fun ProjectCatalogCard(saved: Boolean, onSave: () -> Unit) {
+    Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Box(
-                Modifier.fillMaxWidth().height(145.dp).background(SectionBgColor, RoundedCornerShape(18.dp)).padding(20.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Column {
-                    Text("TeamFlow", color = PrimaryButtonColor, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                    Text("Сервис для студенческих команд", color = TextDarkColor, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
+            Box(Modifier.fillMaxWidth().height(100.dp).background(SectionBgColor, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("TeamFlow", color = PrimaryButtonColor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("Команда для учебного проекта", color = TextDarkColor, fontSize = 11.sp)
                 }
             }
-            Text("TeamFlow", color = TextDarkColor, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-            Text("Ищем UI/UX-дизайнера", color = MutedTextColor, fontSize = 17.sp, modifier = Modifier.padding(vertical = 6.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("TeamFlow", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                BookmarkButton(saved, onSave)
+            }
+            Text("Ищем UI/UX-дизайнера", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             SkillChips(listOf("Figma", "UX", "UI"))
-            Text("Создаём планировщик задач. Нужна помощь с интерфейсом и прототипом.", color = TextDarkColor, fontSize = 16.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 12.dp))
+            ExpandableHeader("Описание проекта", false) {}
         }
     }
-    ExpandableHeader("Подробнее о проекте", false) { }
+}
+
+@Composable
+internal fun BookmarkButton(saved: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.size(34.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(width = 18.dp, height = 23.dp)) {
+            val stroke = 1.7.dp.toPx()
+            val path = Path().apply {
+                moveTo(stroke, stroke)
+                lineTo(size.width - stroke, stroke)
+                lineTo(size.width - stroke, size.height - stroke)
+                lineTo(size.width / 2, size.height * 0.72f)
+                lineTo(stroke, size.height - stroke)
+                close()
+            }
+            if (saved) drawPath(path, PrimaryButtonColor) else drawPath(path, PrimaryButtonColor, style = Stroke(stroke, cap = StrokeCap.Round))
+        }
+    }
 }
 
 @Composable
 private fun SwipeActions() {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        SwipeActionButton(false, "Не интересует")
+        SwipeActionButton(true, "Выразить интерес")
+    }
+}
+
+@Composable
+private fun SwipeActionButton(liked: Boolean, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
-            modifier = Modifier.size(60.dp).clickable { },
-            color = CardBgColor,
+            modifier = Modifier.size(if (liked) 58.dp else 54.dp).clickable { },
+            color = if (liked) PrimaryButtonColor else CardBgColor,
             shape = CircleShape,
-            border = BorderStroke(1.dp, MutedTextColor),
+            border = if (liked) null else BorderStroke(1.dp, MutedTextColor),
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text("×", color = PrimaryButtonColor, fontSize = 38.sp, fontWeight = FontWeight.Light)
+            Canvas(Modifier.padding(15.dp)) {
+                val color = if (liked) CardBgColor else PrimaryButtonColor
+                val stroke = 1.8.dp.toPx()
+                if (liked) {
+                    val p = Path().apply {
+                        moveTo(size.width / 2, size.height * 0.88f)
+                        cubicTo(size.width * 0.37f, size.height * 0.72f, size.width * 0.08f, size.height * 0.55f, size.width * 0.08f, size.height * 0.3f)
+                        cubicTo(size.width * 0.08f, 0f, size.width * 0.38f, 0f, size.width / 2, size.height * 0.22f)
+                        cubicTo(size.width * 0.62f, 0f, size.width * 0.92f, 0f, size.width * 0.92f, size.height * 0.3f)
+                        cubicTo(size.width * 0.92f, size.height * 0.55f, size.width * 0.63f, size.height * 0.72f, size.width / 2, size.height * 0.88f)
+                    }
+                    drawPath(p, color, style = Stroke(stroke, cap = StrokeCap.Round))
+                } else {
+                    drawLine(color, Offset(2.dp.toPx(), 2.dp.toPx()), Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()), stroke, StrokeCap.Round)
+                    drawLine(color, Offset(size.width - 2.dp.toPx(), 2.dp.toPx()), Offset(2.dp.toPx(), size.height - 2.dp.toPx()), stroke, StrokeCap.Round)
+                }
             }
         }
-        Spacer(Modifier.size(36.dp))
-        Surface(Modifier.size(66.dp).clickable { }, color = PrimaryButtonColor, shape = CircleShape) {
-            Box(contentAlignment = Alignment.Center) { Text("♡", color = CardBgColor, fontSize = 38.sp) }
-        }
+        Text(label, color = PrimaryButtonColor, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
     }
 }
 
 @Composable
 private fun FilterIcon() {
-    Canvas(Modifier.size(30.dp)) {
-        val stroke = 2.dp.toPx()
+    Canvas(Modifier.size(28.dp)) {
+        val stroke = 1.6.dp.toPx()
         listOf(7f, 14f, 21f).forEachIndexed { index, y ->
-            drawLine(PrimaryButtonColor, Offset(3.dp.toPx(), y.dp.toPx()), Offset(27.dp.toPx(), y.dp.toPx()), stroke, StrokeCap.Round)
-            val x = listOf(10, 20, 13)[index].dp.toPx()
-            drawCircle(PrimaryButtonColor, 3.dp.toPx(), Offset(x, y.dp.toPx()))
+            drawLine(PrimaryButtonColor, Offset(3.dp.toPx(), y.dp.toPx()), Offset(25.dp.toPx(), y.dp.toPx()), stroke, StrokeCap.Round)
+            val x = listOf(10, 19, 13)[index].dp.toPx()
+            drawCircle(CardBgColor, 3.dp.toPx(), Offset(x, y.dp.toPx()))
+            drawCircle(PrimaryButtonColor, 2.dp.toPx(), Offset(x, y.dp.toPx()))
         }
     }
 }
@@ -185,5 +209,28 @@ private fun FilterIcon() {
 @Preview(name = "Каталог · телефон", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
 fun CatalogScreenPreview() {
-    MaterialTheme { CatalogScreen({}, {}, {}, {}) }
+    MaterialTheme {
+        CatalogScreen(
+            favorites = setOf(FavoriteItem.PERSON),
+            onCatalog = {},
+            onProfile = {},
+            onMatches = {},
+            onChats = {},
+        )
+    }
+}
+
+@Preview(name = "Каталог проектов · телефон", widthDp = 390, heightDp = 844, showBackground = true)
+@Composable
+fun ProjectCatalogScreenPreview() {
+    MaterialTheme {
+        CatalogScreen(
+            favorites = setOf(FavoriteItem.PROJECT),
+            showProjectsInitially = true,
+            onCatalog = {},
+            onProfile = {},
+            onMatches = {},
+            onChats = {},
+        )
+    }
 }

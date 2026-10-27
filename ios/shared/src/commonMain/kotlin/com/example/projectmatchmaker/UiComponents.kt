@@ -18,7 +18,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
@@ -31,9 +30,9 @@ import projectmatchmaker.shared.generated.resources.Res
 import projectmatchmaker.shared.generated.resources.bg_circle_bottom
 import projectmatchmaker.shared.generated.resources.bg_circle_top
 import projectmatchmaker.shared.generated.resources.icon_chat
+import projectmatchmaker.shared.generated.resources.icon_eye
 import projectmatchmaker.shared.generated.resources.icon_grid
 import projectmatchmaker.shared.generated.resources.icon_heart
-import projectmatchmaker.shared.generated.resources.icon_eye
 import projectmatchmaker.shared.generated.resources.icon_user
 import projectmatchmaker.shared.generated.resources.matchmaker_logo
 
