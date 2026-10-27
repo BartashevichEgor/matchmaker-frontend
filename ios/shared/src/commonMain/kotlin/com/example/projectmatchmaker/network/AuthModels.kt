@@ -36,12 +36,6 @@ data class MessageResponse(
 )
 
 @Serializable
-data class VerifyEmailRequest(
-    val email: String,
-    val code: String,
-)
-
-@Serializable
 data class EmailRequest(
     val email: String,
 )
