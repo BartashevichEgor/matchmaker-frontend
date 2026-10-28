@@ -58,6 +58,10 @@ function getExternalFieldErrors(
     return { email: error };
   }
 
+  if (errorCode === 'duplicate_username') {
+    return { username: error };
+  }
+
   if (errorCode === 'invalid_credentials') {
     return { password: error };
   }

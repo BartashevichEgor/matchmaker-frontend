@@ -24,9 +24,9 @@ export function RegisterPage() {
     <AuthPageLayout>
       <AuthForm
         mode="register"
-        title="Создать аккаунт"
+        title="Регистрация"
         description="После регистрации подтвердите e-mail кодом из письма."
-        submitLabel="Создать аккаунт"
+        submitLabel="Зарегистрироваться"
         onSubmit={handleSubmit}
         externalError={authError}
         externalErrorCode={authErrorCode}

@@ -20,7 +20,7 @@ export function LoginPage() {
     <AuthPageLayout>
       <AuthForm
         mode="login"
-        title="Войти в аккаунт"
+        title="Вход"
         description="Авторизуйтесь, чтобы получить доступ к защищённым разделам."
         submitLabel="Войти"
         onSubmit={handleSubmit}
