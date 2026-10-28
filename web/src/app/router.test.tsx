@@ -30,7 +30,7 @@ describe('AppRouter', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /Войти в аккаунт/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Вход' })).toBeInTheDocument());
   });
 
   it('renders the register page on /register', async () => {
@@ -42,7 +42,7 @@ describe('AppRouter', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /Создать аккаунт/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Регистрация' })).toBeInTheDocument());
   });
 
   it('renders the catalog on /feed for an authenticated user', async () => {
@@ -79,7 +79,7 @@ describe('AppRouter', () => {
 
   it.each([
     ['/projects', 'Проекты'],
-    ['/profile', 'Профиль'],
+    ['/profile', 'Мой профиль'],
     ['/matches', 'Мэтчи'],
   ])('renders the protected placeholder for %s', async (path, heading) => {
     setAuthenticatedUser();

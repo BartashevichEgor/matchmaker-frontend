@@ -21,7 +21,7 @@ describe('auth pages', () => {
 
     expect(await screen.findByRole('region', { name: 'Презентационная панель' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Matchmaker' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Войти в аккаунт/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Вход' })).toBeInTheDocument();
     expect(screen.queryByText('Вход', { selector: '.section-badge' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Зарегистрироваться' })).toHaveAttribute('href', '/register');
   });
@@ -103,7 +103,7 @@ describe('auth pages', () => {
     await user.type(screen.getByLabelText(/e-?mail/i), 'new@example.com');
     await user.type(screen.getByLabelText(/^пароль$/i), 'password123');
     await user.type(screen.getByLabelText(/подтвердите пароль/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /создать аккаунт/i }));
+    await user.click(screen.getByRole('button', { name: /зарегистрироваться/i }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Лента/i })).toBeInTheDocument());
   });
@@ -238,7 +238,7 @@ describe('auth pages', () => {
     await user.type(screen.getByLabelText(/e-?mail/i), ' TEST@example.com ');
     await user.type(screen.getByLabelText(/^пароль$/i), 'password123');
     await user.type(screen.getByLabelText(/подтвердите пароль/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /создать аккаунт/i }));
+    await user.click(screen.getByRole('button', { name: /зарегистрироваться/i }));
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/Пользователь с таким email уже существует/i),
