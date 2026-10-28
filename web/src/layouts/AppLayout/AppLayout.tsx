@@ -13,14 +13,13 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { path: '/feed', label: 'Feed', displayLabel: 'Каталог', icon: 'feed', exact: true },
   { path: '/matches', label: 'Matches', displayLabel: 'Мэтчи', icon: 'matches', exact: true },
+  { path: '/chat/demo', label: 'Chat', displayLabel: 'Чаты', icon: 'chat' },
   { path: '/profile', label: 'Profile', displayLabel: 'Профиль', icon: 'profile' },
 ];
 
-const MOBILE_NAV_ITEMS: NavItem[] = [
-  ...NAV_ITEMS,
-];
+const MOBILE_NAV_ITEMS = NAV_ITEMS;
 
-type SidebarIconName = 'feed' | 'projects' | 'profile' | 'matches' | 'logout' | 'menu';
+type SidebarIconName = 'feed' | 'projects' | 'profile' | 'matches' | 'chat' | 'logout' | 'menu';
 
 function SidebarIcon({ name }: { name: SidebarIconName }) {
   const commonProps = {
@@ -60,6 +59,13 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
       return (
         <svg {...commonProps}>
           <path d="M20.25 8.5c0 5.25-8.25 10-8.25 10S3.75 13.75 3.75 8.5A4.25 4.25 0 0 1 12 6.8a4.25 4.25 0 0 1 8.25 1.7Z" />
+        </svg>
+      );
+    case 'chat':
+      return (
+        <svg {...commonProps}>
+          <path d="M5.25 5.5h13.5A1.75 1.75 0 0 1 20.5 7.25v7.5a1.75 1.75 0 0 1-1.75 1.75h-7.5L7 19.75v-3.25H5.25a1.75 1.75 0 0 1-1.75-1.75v-7.5A1.75 1.75 0 0 1 5.25 5.5Z" />
+          <path d="M8 10h8M8 13h5" />
         </svg>
       );
     case 'logout':

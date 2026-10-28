@@ -15,16 +15,20 @@ describe('profile and catalog interactions', () => {
       </MemoryRouter>,
     );
 
-    await user.type(screen.getByLabelText('Имя и фамилия *'), 'Анна Иванова');
+    await user.type(screen.getByLabelText('Имя *'), 'Анна');
+    await user.click(screen.getByRole('button', { name: 'Фото и о себе · необязательно' }));
+    expect(screen.getByRole('button', { name: 'Добавить фото' })).toHaveTextContent('А');
+
+    await user.type(screen.getByLabelText('Фамилия *'), 'Иванова');
     expect(screen.getByRole('button', { name: 'Добавить фото' })).toHaveTextContent('АИ');
 
-    await user.click(screen.getByRole('button', { name: /Далее: навыки и опыт/i }));
-    await user.type(screen.getByPlaceholderText('Добавить навык'), 'Figma');
+    await user.click(screen.getByRole('button', { name: /Далее: навыки и образование/i }));
+    await user.type(screen.getByPlaceholderText('Добавить навык'), 'React');
     await user.click(screen.getByRole('button', { name: 'Добавить навык' }));
-    expect(screen.getByText('Figma')).toBeInTheDocument();
+    expect(screen.getByText('React')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Удалить навык Figma' }));
-    expect(screen.queryByText('Figma')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Удалить навык React' }));
+    expect(screen.queryByText('React')).not.toBeInTheDocument();
   });
 
   it('opens the related fields in profile creation and catalog filters', async () => {
@@ -36,9 +40,9 @@ describe('profile and catalog interactions', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByPlaceholderText('https://github.com/username')).not.toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'GitHub и ссылки' }));
-    expect(screen.getByPlaceholderText('https://github.com/username')).toBeInTheDocument();
+    expect(screen.getByLabelText('Уровень образования')).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Образование' }));
+    expect(screen.getByLabelText('Уровень образования')).toBeVisible();
     unmount();
 
     render(<CatalogPage />);
