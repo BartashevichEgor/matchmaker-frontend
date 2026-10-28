@@ -1,21 +1,13 @@
-import { useState } from 'react';
-import type { ProfileDraft } from '../../../entities/profile/model/profile.types';
-
-const emptyProfileDraft: ProfileDraft = {
-  name: '',
-  role: '',
-  about: '',
-  skills: [],
-  experience: '',
-  education: '',
-  github: '',
-  portfolio: '',
-  telegram: '',
-};
+import { useEffect, useState } from 'react';
+import { readProfileDraft, saveProfileDraft, type ProfileDraft } from '../../../entities/profile/model/profile.types';
 
 export function useProfileDraft() {
-  const [draft, setDraft] = useState<ProfileDraft>(emptyProfileDraft);
+  const [draft, setDraft] = useState<ProfileDraft>(() => readProfileDraft());
   const [skillInput, setSkillInput] = useState('');
+
+  useEffect(() => {
+    saveProfileDraft(draft);
+  }, [draft]);
 
   const updateDraft = <Field extends keyof ProfileDraft>(field: Field, value: ProfileDraft[Field]) => {
     setDraft((current) => ({ ...current, [field]: value }));
