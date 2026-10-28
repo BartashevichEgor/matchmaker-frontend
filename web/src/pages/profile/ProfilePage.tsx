@@ -1,22 +1,44 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { getProfileDisplayName, readProfileDraft } from '../../entities/profile/model/profile.types';
 import { ProfileAvatar } from '../../entities/profile/ui/ProfileAvatar';
 import { Accordion } from '../../shared/ui/Accordion';
+
+function BookmarkIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="profile-bookmark-icon">
+      <path d="M7 4.75A1.75 1.75 0 0 1 8.75 3h6.5A1.75 1.75 0 0 1 17 4.75V21l-5-3-5 3V4.75Z" />
+    </svg>
+  );
+}
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const username = user?.username ?? 'Veronika';
-  const avatarName = user?.username ?? 'Имя Фамилия';
-  const [openSections, setOpenSections] = useState({ experience: false, links: false });
+  const draft = readProfileDraft();
+  const profileName = getProfileDisplayName(draft) || 'Вероника Соболь';
+  const username = user?.username ?? 'veronika';
+  const role = draft.role || 'UI/UX-дизайнер';
+  const about = draft.about || 'Создаю понятные интерфейсы. Ищу команду для полезного проекта.';
+  const skills = draft.skills.length ? draft.skills : ['Figma', 'UX', 'Mermaid'];
+  const education = draft.education || 'Высшее · бакалавриат';
+  const educationDetails = [
+    education,
+    draft.educationInstitution,
+    draft.educationSpecialty,
+    draft.educationStatus,
+    draft.educationCompletionYear ? `до ${draft.educationCompletionYear}` : '',
+  ].filter(Boolean).join(' · ');
+  const courses = [draft.courseName, draft.courseProvider, draft.courseYear]
+    .filter(Boolean)
+    .join(' · ') || draft.courses || 'Курс по UX-исследованиям';
+  const [openSections, setOpenSections] = useState({ education: false, courses: false });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const handleLogout = async () => {
-    if (isLoggingOut) {
-      return;
-    }
+    if (isLoggingOut) return;
 
     setLogoutError(null);
     setIsLoggingOut(true);
@@ -33,68 +55,58 @@ export function ProfilePage() {
 
   return (
     <section className="profile-page" aria-labelledby="profile-title">
-      <h1 id="profile-title" aria-label="Профиль">Мой профиль</h1>
-      <div className="profile-layout">
-        <article className="profile-card">
-          <ProfileAvatar name={avatarName} className="profile-card__avatar" />
-          <h2>@{username}</h2>
-          <p>UI/UX-дизайнер</p>
-          <Link className="button button-primary profile-card__edit" to="/profile/create?step=1">
-            Редактировать
-          </Link>
-          <button
-            className="button button-secondary profile-card__logout"
-            type="button"
-            onClick={() => void handleLogout()}
-            disabled={isLoggingOut}
-            aria-busy={isLoggingOut}
-          >
-            {isLoggingOut ? 'Выход...' : 'Выйти из профиля'}
-          </button>
-          {logoutError ? (
-            <p className="profile-card__error" role="alert">
-              {logoutError}
-            </p>
-          ) : null}
-        </article>
+      <h1 id="profile-title">Мой профиль</h1>
+      <article className="profile-card">
+        <div className="profile-card__identity">
+          <ProfileAvatar name={profileName} className="profile-card__avatar" />
+          <div>
+            <h2>{profileName}</h2>
+            <p className="profile-card__username">@{username}</p>
+            <p className="profile-card__role">{role}</p>
+          </div>
+        </div>
+
+        <Link className="profile-favorite" to="/projects">
+          <BookmarkIcon />
+          <span><strong>Избранное</strong><small>Сохранённые анкеты и проекты</small></span>
+        </Link>
+        <Link className="button button-secondary profile-card__edit" to="/profile/create?step=1">
+          Редактировать профиль
+        </Link>
 
         <div className="profile-details">
-          <div className="profile-stats">
-            <div><strong>12</strong><span>мэтчей</span></div>
-            <div><strong>48</strong><span>лайков</span></div>
-          </div>
           <section>
             <h2>О себе</h2>
-            <p>Рисую интерфейсы и люблю проекты, которые приносят пользу.</p>
+            <p>{about}</p>
           </section>
           <section>
-            <h2>Стек и навыки</h2>
-            <div className="profile-chips"><span>Figma</span><span>UX</span><span>Mermaid</span></div>
+            <h2>Навыки</h2>
+            <div className="profile-chips">{skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
           </section>
           <Accordion
             className="profile-accordion"
-            title="Опыт и образование"
-            open={openSections.experience}
-            onToggle={() => setOpenSections((current) => ({ ...current, experience: !current.experience }))}
+            title="Образование и курсы"
+            open={openSections.education || openSections.courses}
+            onToggle={() => setOpenSections((current) => ({ ...current, education: !(current.education || current.courses), courses: false }))}
           >
             <div className="profile-accordion__details">
-              <div><h3>Опыт работы</h3><p>Учебные и личные проекты в дизайне интерфейсов.</p></div>
-              <div><h3>Образование</h3><p>Дизайн интерфейсов и пользовательский опыт.</p></div>
-            </div>
-          </Accordion>
-          <Accordion
-            className="profile-accordion"
-            title="GitHub и ссылки"
-            open={openSections.links}
-            onToggle={() => setOpenSections((current) => ({ ...current, links: !current.links }))}
-          >
-            <div className="profile-accordion__details">
-              <div><h3>GitHub</h3><a href="https://github.com" target="_blank" rel="noreferrer">github.com/username</a></div>
-              <div><h3>Портфолио</h3><a href="https://example.com" target="_blank" rel="noreferrer">your-portfolio.example</a></div>
+              <div><h3>Образование</h3><p>{educationDetails}</p></div>
+              <div><h3>Курсы и сертификаты</h3><p>{courses}</p></div>
             </div>
           </Accordion>
         </div>
-      </div>
+
+        <button
+          className="button button-secondary profile-card__logout"
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={isLoggingOut}
+          aria-busy={isLoggingOut}
+        >
+          {isLoggingOut ? 'Выход...' : 'Выйти из профиля'}
+        </button>
+        {logoutError ? <p className="profile-card__error" role="alert">{logoutError}</p> : null}
+      </article>
     </section>
   );
 }

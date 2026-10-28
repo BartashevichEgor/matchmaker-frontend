@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { Chevron } from './Chevron';
 
 type AccordionProps = {
   title: string;
@@ -22,11 +23,7 @@ export function Accordion({ title, open, onToggle, children, className }: Accord
         onClick={onToggle}
       >
         <span>{title}</span>
-        <span className={`accordion-chevron${open ? ' accordion-chevron--open' : ''}`} aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </span>
+        <Chevron open={open} />
       </button>
       <div id={panelId} className={`${className}-panel`} hidden={!open}>
         {children}

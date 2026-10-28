@@ -58,7 +58,7 @@ describe('AppLayout', () => {
     expect(within(sidebarNavigation).getByRole('link', { name: 'Feed' })).toBeInTheDocument();
     expect(within(sidebarNavigation).getByRole('link', { name: 'Profile' })).toBeInTheDocument();
     expect(within(sidebarNavigation).getByRole('link', { name: 'Matches' })).toBeInTheDocument();
-    // Chat is not in navigation — need real matchId for the link
+    expect(within(sidebarNavigation).getByRole('link', { name: 'Chat' })).toHaveAttribute('href', '/chat/demo');
   });
 
   it('renders logout button when user is authenticated', async () => {
