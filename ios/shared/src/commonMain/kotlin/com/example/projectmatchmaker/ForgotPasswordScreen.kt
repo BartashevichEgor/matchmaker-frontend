@@ -66,7 +66,7 @@ fun ForgotPasswordScreen(
                                 busy = false
                                 result.onSuccess { sent = true }.onFailure { error = it.message ?: "Не удалось отправить код" }
                             }
-                        }, email.contains("@") && !busy)
+                        }, isValidEmailAddress(email) && !busy)
                     } else {
                         PrimaryButton("Открыть экран ввода кода", onBack)
                     }

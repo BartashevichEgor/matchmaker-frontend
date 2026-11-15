@@ -43,7 +43,7 @@ fun RegisterScreen(
 
     // Валидация
     val isUsernameValid = username.isEmpty() || username.length >= 2
-    val isEmailValid = email.isEmpty() || (email.contains("@") && email.contains("."))
+    val isEmailValid = email.isEmpty() || isValidEmailAddress(email)
     val isPasswordValid = password.isEmpty() || password.length >= 8
     val doPasswordsMatch = confirmPassword.isEmpty() || password == confirmPassword
 
@@ -99,7 +99,7 @@ fun RegisterScreen(
                         )
                         OutlinedTextField(
                             value = username,
-                            onValueChange = { username = it },
+                            onValueChange = { username = it; serverError = null },
                             placeholder = { Text("username", color = Color.Gray) },
                             singleLine = true,
                             isError = !isUsernameValid,
@@ -136,7 +136,7 @@ fun RegisterScreen(
                         )
                         OutlinedTextField(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = { email = it; serverError = null },
                             placeholder = { Text("you@example.com", color = Color.Gray) },
                             singleLine = true,
                             isError = !isEmailValid,
