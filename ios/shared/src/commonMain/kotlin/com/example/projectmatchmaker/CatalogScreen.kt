@@ -31,6 +31,18 @@ import androidx.compose.ui.unit.sp
 
 private enum class CatalogTab { PROJECTS, PEOPLE }
 
+private val demoPeople = listOf(
+    CatalogPersonItem("Алексей Ковалёв", "Backend-разработчик", "Люблю чистый код. Ищу команду для полезного проекта.", listOf("Python", "Django", "SQL"), 87),
+    CatalogPersonItem("Мария Волкова", "Frontend-разработчик", "Создаю удобные интерфейсы и хочу развивать продукт вместе с командой.", listOf("React", "TypeScript", "Figma"), 82),
+    CatalogPersonItem("Илья Смирнов", "Android-разработчик", "Разрабатываю мобильные приложения, открыт к учебным и командным проектам.", listOf("Kotlin", "Compose", "Ktor"), 79),
+)
+
+private val demoProjects = listOf(
+    CatalogProjectItem("TeamFlow", "Команда для учебного проекта", "Ищем UI/UX-дизайнера", listOf("Figma", "UX", "UI"), 87),
+    CatalogProjectItem("EcoTrack", "Приложение для экологичных привычек", "Ищем Android-разработчика", listOf("Kotlin", "Compose", "API"), 81),
+    CatalogProjectItem("StudyBuddy", "Сервис для совместной подготовки к учёбе", "Ищем frontend-разработчика", listOf("React", "TypeScript", "UI"), 76),
+)
+
 data class CatalogProjectItem(
     val title: String,
     val description: String,
@@ -71,8 +83,11 @@ fun CatalogScreen(
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
     }
     var cardIndex by remember { mutableStateOf(0) }
-    val visibleProject = projects.getOrNull(cardIndex)
-    val visiblePerson = people.getOrNull(cardIndex)
+    val availableProjects = projects.ifEmpty { demoProjects }
+    val availablePeople = people.ifEmpty { demoPeople }
+    val visibleProject = availableProjects.getOrNull(cardIndex)
+    val visiblePerson = availablePeople.getOrNull(cardIndex)
+    val noVisibleCard = if (tab == CatalogTab.PROJECTS) visibleProject == null else visiblePerson == null
     ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
             BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -92,15 +107,27 @@ fun CatalogScreen(
                     }
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
                     CatalogTabs(tab) { tab = it; cardIndex = 0 }
-                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        if (showProjectsInitially) {
+                            "От имени: моя анкета. Специалисты доступны в проектном режиме."
+                        } else {
+                            "От имени: мой проект. Проекты доступны в персональном режиме."
+                        },
+                        color = MutedTextColor,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        modifier = Modifier.padding(top = 5.dp, bottom = 10.dp),
+                    )
                     if (isLoading) {
                         Text("Загружаем карточки…", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
                     } else if (errorMessage != null) {
-                        Text(errorMessage, color = ErrorColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
-                        PrimaryButton("Повторить", onRetry)
-                    } else if (backendEnabled && ((tab == CatalogTab.PROJECTS && projects.isEmpty()) || (tab == CatalogTab.PEOPLE && people.isEmpty()))) {
-                        Text("Ничего не найдено. Попробуй изменить фильтры.", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
-                    } else if (isTablet) {
+                        Text("Не удалось обновить каталог. Пока можно посмотреть примеры.", color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        PrimaryButton("Повторить загрузку", onRetry)
+                    }
+                    if (!isLoading && noVisibleCard) {
+                        Text("Примеры закончились. Можно начать просмотр заново.", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(top = 20.dp))
+                        PrimaryButton("Посмотреть сначала", onClick = { cardIndex = 0 })
+                    } else if (!isLoading && isTablet) {
                         Row(
                             Modifier.weight(1f).fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -112,14 +139,14 @@ fun CatalogScreen(
                                 Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                             }
                         }
-                    } else {
+                    } else if (!isLoading) {
                         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                             CatalogCard(tab, favorites, onFavoriteToggle, visibleProject, visiblePerson)
                             Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                         }
                     }
                     SwipeActions(
-                        enabled = !backendEnabled || (if (tab == CatalogTab.PROJECTS) visibleProject != null else visiblePerson != null),
+                        enabled = !isLoading && !noVisibleCard,
                         onPass = {
                             if (backendEnabled) {
                                 if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "pass") }
@@ -151,16 +178,32 @@ private fun CatalogCard(
 ) {
     if (tab == CatalogTab.PEOPLE) {
         PersonCatalogCard(
-            saved = FavoriteItem.PERSON in favorites,
+            saved = person?.let { it.toFavoriteItem() in favorites } ?: false,
             person = person,
-        ) { onFavoriteToggle(FavoriteItem.PERSON) }
+        ) { person?.toFavoriteItem()?.let(onFavoriteToggle) }
     } else {
         ProjectCatalogCard(
-            saved = FavoriteItem.PROJECT in favorites,
+            saved = project?.let { it.toFavoriteItem() in favorites } ?: false,
             project = project,
-        ) { onFavoriteToggle(FavoriteItem.PROJECT) }
+        ) { project?.toFavoriteItem()?.let(onFavoriteToggle) }
     }
 }
+
+private fun CatalogPersonItem.toFavoriteItem() = FavoriteItem(
+    type = FavoriteType.PERSON,
+    id = id?.toString() ?: "demo:$name",
+    title = name,
+    subtitle = role,
+    skills = skills,
+)
+
+private fun CatalogProjectItem.toFavoriteItem() = FavoriteItem(
+    type = FavoriteType.PROJECT,
+    id = id?.toString() ?: "demo:$title",
+    title = title,
+    subtitle = role,
+    skills = skills,
+)
 
 @Composable
 private fun CatalogFilters(modifier: Modifier = Modifier) {
@@ -331,7 +374,8 @@ private fun FilterIcon() {
 fun CatalogScreenPreview() {
     MaterialTheme {
         CatalogScreen(
-            favorites = setOf(FavoriteItem.PERSON),
+            favorites = setOf(FavoriteItem(FavoriteType.PERSON, "sample-person", "Алексей Ковалёв", "Backend-разработчик", listOf("Python"))),
+            showProjectsInitially = true,
             onCatalog = {},
             onProfile = {},
             onMatches = {},
@@ -345,7 +389,7 @@ fun CatalogScreenPreview() {
 fun ProjectCatalogScreenPreview() {
     MaterialTheme {
         CatalogScreen(
-            favorites = setOf(FavoriteItem.PROJECT),
+            favorites = setOf(FavoriteItem(FavoriteType.PROJECT, "sample-project", "TeamFlow", "Ищем UI/UX-дизайнера", listOf("Figma"))),
             showProjectsInitially = true,
             onCatalog = {},
             onProfile = {},
@@ -360,7 +404,7 @@ fun ProjectCatalogScreenPreview() {
 fun CatalogTabletScreenPreview() {
     MaterialTheme {
         CatalogScreen(
-            favorites = setOf(FavoriteItem.PERSON),
+            favorites = setOf(FavoriteItem(FavoriteType.PERSON, "sample-person", "Алексей Ковалёв", "Backend-разработчик", listOf("Python"))),
             onCatalog = {},
             onProfile = {},
             onMatches = {},

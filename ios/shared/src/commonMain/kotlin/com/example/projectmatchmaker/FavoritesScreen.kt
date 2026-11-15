@@ -58,23 +58,8 @@ fun FavoritesScreen(
                     if (favorites.isEmpty()) {
                         EmptyFavorites(onCatalog)
                     } else {
-                        if (FavoriteItem.PERSON in favorites) {
-                            FavoriteCard(
-                                item = FavoriteItem.PERSON,
-                                title = "Алексей Ковалёв",
-                                subtitle = "Backend-разработчик",
-                                skills = listOf("Python", "Django", "SQL"),
-                                onRemove = { onFavoriteToggle(FavoriteItem.PERSON) },
-                            )
-                        }
-                        if (FavoriteItem.PROJECT in favorites) {
-                            FavoriteCard(
-                                item = FavoriteItem.PROJECT,
-                                title = "TeamFlow",
-                                subtitle = "Ищем UI/UX-дизайнера",
-                                skills = listOf("Figma", "UX", "UI"),
-                                onRemove = { onFavoriteToggle(FavoriteItem.PROJECT) },
-                            )
+                        favorites.forEach { item ->
+                            FavoriteCard(item = item, onRemove = { onFavoriteToggle(item) })
                         }
                     }
                 }
@@ -104,33 +89,30 @@ private fun EmptyFavorites(onCatalog: () -> Unit) {
 @Composable
 private fun FavoriteCard(
     item: FavoriteItem,
-    title: String,
-    subtitle: String,
-    skills: List<String>,
     onRemove: () -> Unit,
 ) {
     Surface(color = PanelBgColor, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            if (item == FavoriteItem.PROJECT) {
+            if (item.type == FavoriteType.PROJECT) {
                 Box(
                     Modifier.fillMaxWidth().height(72.dp).background(SectionBgColor, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("TeamFlow", color = PrimaryButtonColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(item.title, color = PrimaryButtonColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Row(
-                Modifier.fillMaxWidth().padding(top = if (item == FavoriteItem.PROJECT) 12.dp else 0.dp),
+                Modifier.fillMaxWidth().padding(top = if (item.type == FavoriteType.PROJECT) 12.dp else 0.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(title, color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(subtitle, color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    Text(item.title, color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(item.subtitle, color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                 }
                 BookmarkButton(true, onRemove)
             }
-            SkillChips(skills)
+            SkillChips(item.skills)
         }
     }
 }
@@ -144,5 +126,13 @@ fun FavoritesScreenPreview() {
 @Preview(name = "Избранное · сохранено", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
 fun FavoritesSavedScreenPreview() {
-    MaterialTheme { FavoritesScreen(setOf(FavoriteItem.PERSON, FavoriteItem.PROJECT), {}, {}, {}, {}, {}) }
+    MaterialTheme {
+        FavoritesScreen(
+            setOf(
+                FavoriteItem(FavoriteType.PERSON, "sample-person", "Алексей Ковалёв", "Backend-разработчик", listOf("Python", "Django", "SQL")),
+                FavoriteItem(FavoriteType.PROJECT, "sample-project", "TeamFlow", "Ищем UI/UX-дизайнера", listOf("Figma", "UX", "UI")),
+            ),
+            {}, {}, {}, {}, {},
+        )
+    }
 }
