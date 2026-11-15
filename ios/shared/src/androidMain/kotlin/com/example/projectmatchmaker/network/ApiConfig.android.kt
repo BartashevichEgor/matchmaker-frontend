@@ -1,9 +1,8 @@
 package com.example.projectmatchmaker.network
 
 /**
- * Локальный backend пробрасывается командой `adb reverse tcp:8000 tcp:8000`.
- * Такой адрес одинаково работает во встроенном эмуляторе Android Studio и на
- * подключённом по USB Android-устройстве.
+ * Android-эмулятор видит backend на компьютере через специальный адрес
+ * 10.0.2.2. Для физического телефона нужен адрес компьютера в локальной сети.
  */
-actual fun platformApiBaseUrl(): String = "http://127.0.0.1:8000"
+actual fun platformApiBaseUrl(): String = "http://10.0.2.2:8000"
 
