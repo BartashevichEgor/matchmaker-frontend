@@ -153,6 +153,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                         registrationMode = cachedProfile.registrationMode,
                         role = serverProfile.role.ifBlank { cachedProfile.role },
                         roleId = serverProfile.roleId ?: cachedProfile.roleId,
+                        photoBase64 = cachedProfile.photoBase64,
                         about = serverProfile.about.ifBlank { cachedProfile.about },
                         skills = serverProfile.skills.ifEmpty { cachedProfile.skills },
                         experience = serverProfile.experience.ifBlank { cachedProfile.experience },
@@ -366,6 +367,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                     profile = withSkills.toProfile(roleCatalog, skillCatalog, profile.email)
                                         .copy(
                                             courses = profile.courses,
+                                            photoBase64 = profile.photoBase64,
                                             role = profile.role,
                                             roleId = resolvedRoleId,
                                         )

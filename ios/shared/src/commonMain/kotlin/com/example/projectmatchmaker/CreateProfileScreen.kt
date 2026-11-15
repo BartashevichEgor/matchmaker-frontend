@@ -9,17 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +39,6 @@ fun CreateProfileScreen(
     onChats: () -> Unit = {},
 ) {
     var optionalExpanded by remember { mutableStateOf(false) }
-    var showRoleHelp by remember { mutableStateOf(false) }
 
     ScreenFrame(
         selected = MainDestination.PROFILE,
@@ -90,17 +84,14 @@ fun CreateProfileScreen(
                         )
                         Text("⌄", color = PrimaryButtonColor, fontSize = 22.sp)
                     }
-                    Text(
-                        "Что означают роли?",
-                        color = PrimaryButtonColor,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(vertical = 12.dp).clickable { showRoleHelp = true },
-                    )
-
                     ExpandableHeader("Фото и о себе · необязательно", optionalExpanded) {
                         optionalExpanded = !optionalExpanded
                     }
                     if (optionalExpanded) {
+                        FormLabel("Фото профиля")
+                        PhotoPickerField(profile.photoBase64) { photo ->
+                            onProfileChange(profile.copy(photoBase64 = photo))
+                        }
                         FormLabel("О себе")
                         FormField(
                             profile.about,
@@ -122,47 +113,6 @@ fun CreateProfileScreen(
         }
     }
 
-    if (showRoleHelp) {
-        AlertDialog(
-            onDismissRequest = { showRoleHelp = false },
-            containerColor = CardBgColor,
-            titleContentColor = TextDarkColor,
-            textContentColor = TextDarkColor,
-            title = { Text("Кто чем занимается", fontWeight = FontWeight.Bold) },
-            text = {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    teamRoleGroups.forEachIndexed { groupIndex, (group, roles) ->
-                        item(key = "help-group-$groupIndex") {
-                            Text(
-                                group,
-                                color = TextDarkColor,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        items(roles, key = { role -> "help-${role.title}" }) { role ->
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(PanelBgColor, RoundedCornerShape(10.dp))
-                                    .padding(10.dp),
-                            ) {
-                                Text(role.title, color = TextDarkColor, fontWeight = FontWeight.SemiBold)
-                                Text(role.description, color = MutedTextColor, fontSize = 13.sp)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showRoleHelp = false },
-                ) { Text("Понятно", color = PrimaryButtonColor, fontWeight = FontWeight.Bold) }
-            },
-        )
-    }
 }
 
 @Preview(name = "Профиль · шаг 1", widthDp = 390, heightDp = 844, showBackground = true)

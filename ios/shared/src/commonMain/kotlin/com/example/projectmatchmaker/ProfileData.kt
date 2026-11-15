@@ -11,6 +11,7 @@ data class ProfileData(
     val lastName: String = "",
     val role: String = "",
     val roleId: Int? = null,
+    val photoBase64: String = "",
     val about: String = "",
     val skills: List<String> = emptyList(),
     val experience: String = "",
