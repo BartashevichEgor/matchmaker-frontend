@@ -1,6 +1,7 @@
 package com.example.projectmatchmaker
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,11 +26,14 @@ fun RegisterScreen(
     onNavigateToLogin: () -> Unit = {},
     onRegister: suspend (username: String, email: String, password: String) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
     onAuthenticated: () -> Unit = {},
+    initialMode: String = "developer",
+    onModeSelected: (String) -> Unit = {},
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var registrationMode by remember { mutableStateOf(initialMode) }
 
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isConfirmPasswordVisible by remember { mutableStateOf(false) }
@@ -39,7 +43,7 @@ fun RegisterScreen(
 
     // Валидация
     val isUsernameValid = username.isEmpty() || username.length >= 2
-    val isEmailValid = email.isEmpty() || (email.contains("@") && email.contains("."))
+    val isEmailValid = email.isEmpty() || isValidEmailAddress(email)
     val isPasswordValid = password.isEmpty() || password.length >= 8
     val doPasswordsMatch = confirmPassword.isEmpty() || password == confirmPassword
 
@@ -95,7 +99,7 @@ fun RegisterScreen(
                         )
                         OutlinedTextField(
                             value = username,
-                            onValueChange = { username = it },
+                            onValueChange = { username = it; serverError = null },
                             placeholder = { Text("username", color = Color.Gray) },
                             singleLine = true,
                             isError = !isUsernameValid,
@@ -132,7 +136,7 @@ fun RegisterScreen(
                         )
                         OutlinedTextField(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = { email = it; serverError = null },
                             placeholder = { Text("you@example.com", color = Color.Gray) },
                             singleLine = true,
                             isError = !isEmailValid,
@@ -241,6 +245,26 @@ fun RegisterScreen(
                                 fontSize = 11.sp,
                                 modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Для чего ты регистрируешься?", fontSize = 12.sp, color = TextDarkColor, modifier = Modifier.align(Alignment.Start))
+                    listOf("developer" to "Я ищу проект", "project" to "Я ищу людей в проект").forEach { (mode, label) ->
+                        val selected = registrationMode == mode
+                        Surface(
+                            color = if (selected) ChipBgColor else CardBgColor,
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) PrimaryButtonColor else BorderColor),
+                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp).clickable {
+                                registrationMode = mode
+                                onModeSelected(mode)
+                            },
+                        ) {
+                            Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (selected) "●" else "○", color = PrimaryButtonColor, fontSize = 13.sp)
+                                Text(label, color = TextDarkColor, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
 

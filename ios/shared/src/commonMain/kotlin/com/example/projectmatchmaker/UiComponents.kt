@@ -68,17 +68,38 @@ fun ScreenFrame(
 
 @Composable
 fun BrandHeader() {
-    Row(
-        Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            painter = painterResource(Res.drawable.matchmaker_logo),
-            contentDescription = "Логотип Matchmaker",
-            modifier = Modifier.size(width = 34.dp, height = 29.dp),
-        )
-        Spacer(Modifier.size(11.dp))
-        Text("Matchmaker", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val headerHeight = if (maxWidth >= 600.dp) 72.dp else 76.dp
+        Row(
+            Modifier.fillMaxWidth().height(headerHeight).padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(Res.drawable.matchmaker_logo),
+                contentDescription = "Логотип Matchmaker",
+                modifier = Modifier.size(width = 34.dp, height = 29.dp),
+            )
+            Spacer(Modifier.size(11.dp))
+            Text("Matchmaker", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/**
+ * Общий контейнер контента. В макетах телефона внутренний отступ небольшой,
+ * а на планшете контент начинается с 64 dp — это оставляет место под колонку
+ * фильтров и совпадает с сеткой Figma (x = 76 при ширине 768 dp).
+ */
+@Composable
+fun ResponsivePageColumn(
+    modifier: Modifier = Modifier,
+    phonePadding: PaddingValues = PaddingValues(12.dp),
+    tabletPadding: PaddingValues = PaddingValues(start = 64.dp, end = 64.dp, top = 28.dp, bottom = 14.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val padding = if (maxWidth >= 600.dp) tabletPadding else phonePadding
+        Column(Modifier.fillMaxSize().padding(padding), content = content)
     }
 }
 
@@ -228,11 +249,16 @@ fun ExpandableHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = PrimaryButtonColor,
@@ -240,6 +266,25 @@ fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
         ),
     ) {
         Text(text, color = CardBgColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = InputBgColor,
+            contentColor = PrimaryButtonColor,
+        ),
+    ) {
+        Text(text, color = PrimaryButtonColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 

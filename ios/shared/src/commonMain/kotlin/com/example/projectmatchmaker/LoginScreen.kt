@@ -35,7 +35,7 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
 
     // Валидация
-    val isEmailValid = email.isEmpty() || (email.contains("@") && email.contains("."))
+    val isEmailValid = email.isEmpty() || isValidEmailAddress(email)
     val isPasswordValid = password.isEmpty() || password.length >= 8
 
     val canSubmit = email.isNotBlank() && password.isNotBlank() && isEmailValid && isPasswordValid
@@ -89,7 +89,7 @@ fun LoginScreen(
                         )
                         OutlinedTextField(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = { email = it; serverError = null },
                             placeholder = { Text("you@example.com", color = Color.Gray) },
                             singleLine = true,
                             isError = !isEmailValid,
@@ -132,7 +132,7 @@ fun LoginScreen(
                         )
                         OutlinedTextField(
                             value = password,
-                            onValueChange = { password = it },
+                            onValueChange = { password = it; serverError = null },
                             placeholder = { Text("••••••••", color = Color.Gray) },
                             singleLine = true,
                             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),

@@ -2,6 +2,7 @@
 .kotlin
 .gradle
 .gradle-codex/
+**/.gradle-local/
 **/build/
 xcuserdata
 !src/**/build/

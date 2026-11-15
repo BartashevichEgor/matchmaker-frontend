@@ -8,9 +8,10 @@ class AuthRepository(
     fun hasSavedSession(): Boolean = !TokenStorage.getToken().isNullOrBlank()
 
     suspend fun login(email: String, password: String): Result<Unit> = authRequest {
-        val token = api.login(email, password).accessToken
-        require(token.isNotBlank()) { "Сервер вернул пустой токен" }
-        TokenStorage.saveToken(token)
+        val tokens = api.login(email, password)
+        require(tokens.accessToken.isNotBlank()) { "Сервер вернул пустой токен" }
+        TokenStorage.saveToken(tokens.accessToken)
+        TokenStorage.saveRefreshToken(tokens.refreshToken)
     }
 
     suspend fun register(username: String, email: String, password: String): Result<Unit> = authRequest {
@@ -24,6 +25,26 @@ class AuthRepository(
 
     suspend fun resendVerification(email: String): Result<Unit> = authRequest {
         api.resendVerification(email)
+    }
+
+    suspend fun forgotPassword(email: String): Result<Unit> = authRequest {
+        api.forgotPassword(email)
+    }
+
+    suspend fun resetPassword(email: String, code: String, password: String): Result<Unit> = authRequest {
+        api.resetPassword(email, code, password)
+    }
+
+    suspend fun logoutFromServer(): Result<Unit> = authRequest {
+        TokenStorage.getToken()?.takeIf { it.isNotBlank() }?.let { api.logout(it) }
+        TokenStorage.clearToken()
+    }
+
+    suspend fun refreshSession(): Result<Unit> = authRequest {
+        val refresh = TokenStorage.getRefreshToken() ?: error("Сессия истекла. Войдите снова.")
+        val tokens = api.refresh(refresh)
+        TokenStorage.saveToken(tokens.accessToken)
+        TokenStorage.saveRefreshToken(tokens.refreshToken)
     }
 
     fun logout() {

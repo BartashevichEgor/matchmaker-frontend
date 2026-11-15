@@ -48,7 +48,7 @@ fun CreateProfileScreen(
         onChats = onChats,
     ) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(12.dp)) {
+            ResponsivePageColumn {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                     PageTitle("Создание профиля")
                     Text("Шаг 1 из 2 · Основное", color = MutedTextColor, fontSize = 12.sp)
@@ -84,17 +84,14 @@ fun CreateProfileScreen(
                         )
                         Text("⌄", color = PrimaryButtonColor, fontSize = 22.sp)
                     }
-                    Text(
-                        "Что означают роли?",
-                        color = PrimaryButtonColor,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
-
                     ExpandableHeader("Фото и о себе · необязательно", optionalExpanded) {
                         optionalExpanded = !optionalExpanded
                     }
                     if (optionalExpanded) {
+                        FormLabel("Фото профиля")
+                        PhotoPickerField(profile.photoBase64) { photo ->
+                            onProfileChange(profile.copy(photoBase64 = photo))
+                        }
                         FormLabel("О себе")
                         FormField(
                             profile.about,
@@ -115,6 +112,7 @@ fun CreateProfileScreen(
             }
         }
     }
+
 }
 
 @Preview(name = "Профиль · шаг 1", widthDp = 390, heightDp = 844, showBackground = true)
