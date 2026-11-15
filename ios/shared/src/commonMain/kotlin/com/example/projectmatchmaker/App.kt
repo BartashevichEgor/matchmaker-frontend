@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.projectmatchmaker.auth.AuthRepository
 
+private const val DEFAULT_USE_BACKEND = false
+
 private enum class AppScreen {
     LOGIN,
     REGISTER,
@@ -31,7 +33,11 @@ private enum class AppScreen {
  * useBackend=false, чтобы каждый экран можно было просматривать без сервера.
  */
 @Composable
-fun App(useBackend: Boolean = true) {
+/**
+ * Локальный режим включён по умолчанию, чтобы UI можно было показывать без
+ * запущенного backend. Для интеграционной проверки вызови App(useBackend = true).
+ */
+fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var screen by remember { mutableStateOf(AppScreen.LOGIN) }
     var profile by remember { mutableStateOf(ProfileData()) }
     var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }

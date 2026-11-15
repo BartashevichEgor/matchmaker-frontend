@@ -46,25 +46,85 @@ fun CatalogScreen(
     }
     ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    PageTitle("Каталог")
-                    FilterIcon()
-                }
-                Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
-                CatalogTabs(tab) { tab = it }
-                Spacer(Modifier.height(14.dp))
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    if (tab == CatalogTab.PEOPLE) {
-                        PersonCatalogCard(FavoriteItem.PERSON in favorites) { onFavoriteToggle(FavoriteItem.PERSON) }
-                    } else {
-                        ProjectCatalogCard(FavoriteItem.PROJECT in favorites) { onFavoriteToggle(FavoriteItem.PROJECT) }
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val isTablet = maxWidth >= 600.dp
+                val horizontalPadding = if (isTablet) 64.dp else 16.dp
+                Column(
+                    Modifier.fillMaxSize().padding(
+                        start = horizontalPadding,
+                        end = horizontalPadding,
+                        top = if (isTablet) 28.dp else 14.dp,
+                        bottom = 14.dp,
+                    ),
+                ) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        PageTitle("Каталог")
+                        FilterIcon()
                     }
-                    Text("Закладка — сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
+                    Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
+                    CatalogTabs(tab) { tab = it }
+                    Spacer(Modifier.height(14.dp))
+                    if (isTablet) {
+                        Row(
+                            Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            CatalogFilters(Modifier.width(180.dp))
+                            Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                                CatalogCard(tab, favorites, onFavoriteToggle)
+                                Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
+                            }
+                        }
+                    } else {
+                        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                            CatalogCard(tab, favorites, onFavoriteToggle)
+                            Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
+                        }
+                    }
+                    SwipeActions()
                 }
-                SwipeActions()
             }
         }
+    }
+}
+
+@Composable
+private fun CatalogCard(
+    tab: CatalogTab,
+    favorites: Set<FavoriteItem>,
+    onFavoriteToggle: (FavoriteItem) -> Unit,
+) {
+    if (tab == CatalogTab.PEOPLE) {
+        PersonCatalogCard(FavoriteItem.PERSON in favorites) { onFavoriteToggle(FavoriteItem.PERSON) }
+    } else {
+        ProjectCatalogCard(FavoriteItem.PROJECT in favorites) { onFavoriteToggle(FavoriteItem.PROJECT) }
+    }
+}
+
+@Composable
+private fun CatalogFilters(modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text("Фильтры", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("Роль", color = TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+        Surface(
+            color = InputBgColor,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BorderColor),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Все роли", color = TextDarkColor, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+        }
+        Text("Навыки", color = TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+        Surface(
+            color = InputBgColor,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BorderColor),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Например, Python", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+        }
+        Text("Фильтры уточняют выдачу", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(top = 14.dp), lineHeight = 15.sp)
     }
 }
 
@@ -227,6 +287,20 @@ fun ProjectCatalogScreenPreview() {
         CatalogScreen(
             favorites = setOf(FavoriteItem.PROJECT),
             showProjectsInitially = true,
+            onCatalog = {},
+            onProfile = {},
+            onMatches = {},
+            onChats = {},
+        )
+    }
+}
+
+@Preview(name = "Каталог · планшет", widthDp = 768, heightDp = 1024, showBackground = true)
+@Composable
+fun CatalogTabletScreenPreview() {
+    MaterialTheme {
+        CatalogScreen(
+            favorites = setOf(FavoriteItem.PERSON),
             onCatalog = {},
             onProfile = {},
             onMatches = {},

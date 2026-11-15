@@ -30,7 +30,9 @@ fun FavoritesScreen(
 ) {
     ScreenFrame(MainDestination.PROFILE, onCatalog, onBackToProfile, onMatches, onChats) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            ResponsivePageColumn(
+                phonePadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+            ) {
                 PageTitle("Избранное")
                 Text(
                     "Сохранённое видно только тебе. Закладка не отправляет лайк.",

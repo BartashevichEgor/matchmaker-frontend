@@ -44,7 +44,7 @@ fun SkillsScreen(
         onChats = onChats,
     ) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(12.dp)) {
+            ResponsivePageColumn {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                     PageTitle("Создание профиля")
                     Text("Шаг 2 из 2 · Навыки и образование", color = MutedTextColor, fontSize = 12.sp)

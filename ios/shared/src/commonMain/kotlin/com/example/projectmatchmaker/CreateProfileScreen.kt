@@ -48,7 +48,7 @@ fun CreateProfileScreen(
         onChats = onChats,
     ) {
         PageCard {
-            Column(Modifier.fillMaxSize().padding(12.dp)) {
+            ResponsivePageColumn {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                     PageTitle("Создание профиля")
                     Text("Шаг 1 из 2 · Основное", color = MutedTextColor, fontSize = 12.sp)

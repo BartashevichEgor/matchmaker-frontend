@@ -43,17 +43,18 @@ fun EducationLevelScreen(
 ) {
     ScreenFrame(MainDestination.PROFILE, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-                PageTitle("Уровень образования")
-                Text(
+            ResponsivePageColumn {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PageTitle("Уровень образования")
+                    Text(
                     "Выбери уровень. Учишься сейчас? Укажи это в статусе обучения.",
                     color = MutedTextColor,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
                     modifier = Modifier.padding(bottom = 14.dp),
                 )
-                educationLevels.forEach { level ->
-                    Surface(
+                    educationLevels.forEach { level ->
+                        Surface(
                         color = if (level == selected) ChipBgColor else PanelBgColor,
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.dp, if (level == selected) PrimaryButtonColor else BorderColor),
@@ -61,14 +62,15 @@ fun EducationLevelScreen(
                             onSelect(level)
                             onBack()
                         },
-                    ) {
-                        Text(
+                        ) {
+                            Text(
                             level,
                             color = PrimaryButtonColor,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(15.dp),
-                        )
+                            )
+                        }
                     }
                 }
             }

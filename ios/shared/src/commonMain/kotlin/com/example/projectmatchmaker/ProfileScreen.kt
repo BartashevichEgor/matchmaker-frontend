@@ -37,13 +37,13 @@ fun ProfileScreen(
 
     ScreenFrame(MainDestination.PROFILE, onCatalog, {}, onMatches, onChats) {
         PageCard {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ResponsivePageColumn(
+                phonePadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
             ) {
-                PageTitle("Мой профиль")
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PageTitle("Мой профиль")
 
-                Row(
+                    Row(
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -80,7 +80,7 @@ fun ProfileScreen(
                     }
                 }
 
-                Surface(
+                    Surface(
                     color = PanelBgColor,
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth().padding(top = 18.dp).clickable(onClick = onFavorites),
@@ -107,7 +107,7 @@ fun ProfileScreen(
                     }
                 }
 
-                Surface(
+                    Surface(
                     color = Color.Transparent,
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, BorderColor),
@@ -123,42 +123,43 @@ fun ProfileScreen(
                     }
                 }
 
-                Text(
+                    Text(
                     "О себе",
                     color = TextDarkColor,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                 )
-                Text(
+                    Text(
                     profile.about.ifBlank { "Описание пока не заполнено" },
                     color = if (profile.about.isBlank()) MutedTextColor else TextDarkColor,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                 )
 
-                Text(
+                    Text(
                     "Навыки",
                     color = TextDarkColor,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 18.dp, bottom = 3.dp),
                 )
-                SkillChips(profile.skills)
+                    SkillChips(profile.skills)
 
-                ExpandableHeader("Образование и курсы", educationExpanded) {
-                    educationExpanded = !educationExpanded
-                }
-                if (educationExpanded) {
-                    Text(
-                        listOf(profile.education, profile.experience)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" · ")
-                            .ifBlank { "Не указано" },
-                        color = MutedTextColor,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(12.dp),
-                    )
+                    ExpandableHeader("Образование и курсы", educationExpanded) {
+                        educationExpanded = !educationExpanded
+                    }
+                    if (educationExpanded) {
+                        Text(
+                            listOf(profile.education, profile.experience)
+                                .filter { it.isNotBlank() }
+                                .joinToString(" · ")
+                                .ifBlank { "Не указано" },
+                            color = MutedTextColor,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
                 }
             }
         }
@@ -180,5 +181,11 @@ private val previewProfile = ProfileData(
 @Preview(name = "Мой профиль · телефон", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
+    MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, {}) }
+}
+
+@Preview(name = "Мой профиль · планшет", widthDp = 768, heightDp = 1024, showBackground = true)
+@Composable
+fun ProfileTabletScreenPreview() {
     MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, {}) }
 }

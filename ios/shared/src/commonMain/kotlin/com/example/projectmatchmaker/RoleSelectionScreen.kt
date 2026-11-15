@@ -50,22 +50,21 @@ fun RoleSelectionScreen(
 ) {
     ScreenFrame(MainDestination.PROFILE, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
-            ) {
-                PageTitle("Выбор роли")
-                Text(
+            ResponsivePageColumn {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PageTitle("Выбор роли")
+                    Text(
                     "Выбери основную роль. Под каждым названием — пояснение.",
                     color = MutedTextColor,
                     fontSize = 12.sp,
                 )
-                Text(
+                    Text(
                     "Выбери вариант, затем нажми «Готово»",
                     color = MutedTextColor,
                     fontSize = 13.sp,
                 )
-                Spacer(Modifier.height(20.dp))
-                Surface(
+                    Spacer(Modifier.height(20.dp))
+                    Surface(
                     color = PanelBgColor,
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, BorderColor),
@@ -79,26 +78,27 @@ fun RoleSelectionScreen(
                         modifier = Modifier.padding(15.dp),
                     )
                 }
-                roleOptions.forEach { (group, roles) ->
-                    Text(
+                    roleOptions.forEach { (group, roles) ->
+                        Text(
                         group,
                         color = TextDarkColor,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 20.dp, bottom = 10.dp),
                     )
-                    roles.forEach { (title, description) ->
-                        val selected = title == selectedRole
-                        Surface(
+                        roles.forEach { (title, description) ->
+                            val selected = title == selectedRole
+                            Surface(
                             color = if (selected) ChipBgColor else PanelBgColor,
                             shape = RoundedCornerShape(12.dp),
                             border = if (selected) BorderStroke(1.dp, PrimaryButtonColor) else null,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                                 .clickable { onRoleSelected(title) },
-                        ) {
-                            Column(Modifier.padding(14.dp)) {
-                                Text(title, color = TextDarkColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                Text(description, color = MutedTextColor, fontSize = 12.sp, lineHeight = 17.sp)
+                            ) {
+                                Column(Modifier.padding(14.dp)) {
+                                    Text(title, color = TextDarkColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text(description, color = MutedTextColor, fontSize = 12.sp, lineHeight = 17.sp)
+                                }
                             }
                         }
                     }
