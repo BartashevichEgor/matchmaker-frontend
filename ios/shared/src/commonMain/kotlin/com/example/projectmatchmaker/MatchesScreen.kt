@@ -32,6 +32,11 @@ fun MatchesScreen(
     onChats: () -> Unit,
     onProfile: () -> Unit,
     backendMatches: List<MatchDto>? = null,
+    incomingLikeAccepted: Boolean = false,
+    incomingLikeDismissed: Boolean = false,
+    onAcceptIncomingLike: () -> Unit = {},
+    onDismissIncomingLike: () -> Unit = {},
+    onOpenIncomingChat: () -> Unit = onChats,
 ) {
     ScreenFrame(MainDestination.MATCHES, onCatalog, onProfile, {}, onChats) {
         PageCard {
@@ -47,6 +52,16 @@ fun MatchesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    if (!incomingLikeAccepted && !incomingLikeDismissed) {
+                        item(key = "incoming-codegarden") {
+                            IncomingLikeCard(onAcceptIncomingLike, onDismissIncomingLike)
+                        }
+                    }
+                    if (incomingLikeAccepted) {
+                        item(key = "mutual-codegarden") {
+                            MatchCard(demoIncomingMatch, onOpenIncomingChat)
+                        }
+                    }
                     if (backendMatches == null) {
                         items(demoMatches, key = { it.id }) { match -> MatchCard(match, onChats) }
                     } else if (backendMatches.isEmpty()) {
@@ -58,6 +73,27 @@ fun MatchesScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IncomingLikeCard(onAccept: () -> Unit, onDismiss: () -> Unit) {
+    Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Вам понравилась команда", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Row(Modifier.padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = ProfileAvatarColor, shape = CircleShape, modifier = Modifier.size(50.dp)) {
+                    Text("CG", color = CardBgColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp))
+                }
+                Column(Modifier.weight(1f).padding(start = 11.dp)) {
+                    Text("CodeGarden", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("Ищут UI/UX-дизайнера · совпадение 93%", color = MutedTextColor, fontSize = 12.sp)
+                }
+            }
+            Text("Это пример входящего интереса. Ответь взаимностью, чтобы создать мэтч и начать чат.", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+            PrimaryButton("Ответить взаимностью", onAccept, modifier = Modifier.padding(top = 8.dp))
+            SecondaryButton("Не сейчас", onDismiss, Modifier.padding(top = 4.dp))
         }
     }
 }

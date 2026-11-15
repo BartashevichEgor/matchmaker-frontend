@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,17 +32,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private enum class CatalogTab { PROJECTS, PEOPLE }
+private enum class CatalogWorkFormat(val label: String) {
+    ANY("Любой формат"), REMOTE("Удалённо"), HYBRID("Гибридный"), OFFICE("В офисе")
+}
+
+private data class CatalogFilter(
+    val role: String = "Все роли",
+    val skill: String = "Любые навыки",
+    val workFormat: CatalogWorkFormat = CatalogWorkFormat.ANY,
+)
 
 private val demoPeople = listOf(
-    CatalogPersonItem("Алексей Ковалёв", "Backend-разработчик", "Люблю чистый код. Ищу команду для полезного проекта.", listOf("Python", "Django", "SQL"), 87),
-    CatalogPersonItem("Мария Волкова", "Frontend-разработчик", "Создаю удобные интерфейсы и хочу развивать продукт вместе с командой.", listOf("React", "TypeScript", "Figma"), 82),
-    CatalogPersonItem("Илья Смирнов", "Android-разработчик", "Разрабатываю мобильные приложения, открыт к учебным и командным проектам.", listOf("Kotlin", "Compose", "Ktor"), 79),
+    CatalogPersonItem("Алексей Ковалёв", "Backend-разработчик", "Люблю чистый код. Ищу команду для полезного проекта.", listOf("Python", "Django", "SQL"), 87, workFormat = "Удалённо"),
+    CatalogPersonItem("Мария Волкова", "Frontend-разработчик", "Создаю удобные интерфейсы и хочу развивать продукт вместе с командой.", listOf("React", "TypeScript", "Figma"), 82, workFormat = "Гибридный"),
+    CatalogPersonItem("Илья Смирнов", "Android-разработчик", "Разрабатываю мобильные приложения, открыт к учебным и командным проектам.", listOf("Kotlin", "Compose", "Ktor"), 79, workFormat = "Удалённо"),
 )
 
 private val demoProjects = listOf(
-    CatalogProjectItem("TeamFlow", "Команда для учебного проекта", "Ищем UI/UX-дизайнера", listOf("Figma", "UX", "UI"), 87),
-    CatalogProjectItem("EcoTrack", "Приложение для экологичных привычек", "Ищем Android-разработчика", listOf("Kotlin", "Compose", "API"), 81),
-    CatalogProjectItem("StudyBuddy", "Сервис для совместной подготовки к учёбе", "Ищем frontend-разработчика", listOf("React", "TypeScript", "UI"), 76),
+    CatalogProjectItem("TeamFlow", "Команда для учебного проекта", "Ищем UI/UX-дизайнера", listOf("Figma", "UX", "UI"), 87, workFormat = "Удалённо"),
+    CatalogProjectItem("EcoTrack", "Приложение для экологичных привычек", "Ищем Android-разработчика", listOf("Kotlin", "Compose", "API"), 81, workFormat = "Гибридный"),
+    CatalogProjectItem("StudyBuddy", "Сервис для совместной подготовки к учёбе", "Ищем frontend-разработчика", listOf("React", "TypeScript", "UI"), 76, workFormat = "В офисе"),
 )
 
 data class CatalogProjectItem(
@@ -50,6 +61,7 @@ data class CatalogProjectItem(
     val skills: List<String>,
     val score: Int? = null,
     val id: Int? = null,
+    val workFormat: String? = null,
 )
 
 data class CatalogPersonItem(
@@ -59,6 +71,7 @@ data class CatalogPersonItem(
     val skills: List<String>,
     val score: Int? = null,
     val id: Int? = null,
+    val workFormat: String? = null,
 )
 
 @Composable
@@ -83,10 +96,23 @@ fun CatalogScreen(
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
     }
     var cardIndex by remember { mutableStateOf(0) }
+    var showFilters by remember { mutableStateOf(false) }
+    var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
+    var draftFilter by remember { mutableStateOf(CatalogFilter()) }
     val availableProjects = projects.ifEmpty { demoProjects }
     val availablePeople = people.ifEmpty { demoPeople }
-    val visibleProject = availableProjects.getOrNull(cardIndex)
-    val visiblePerson = availablePeople.getOrNull(cardIndex)
+    val filteredProjects = availableProjects.filter { item ->
+        (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
+            (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+    }
+    val filteredPeople = availablePeople.filter { item ->
+        (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
+            (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+    }
+    val visibleProject = filteredProjects.getOrNull(cardIndex)
+    val visiblePerson = filteredPeople.getOrNull(cardIndex)
     val noVisibleCard = if (tab == CatalogTab.PROJECTS) visibleProject == null else visiblePerson == null
     ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
@@ -103,10 +129,33 @@ fun CatalogScreen(
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         PageTitle("Каталог")
-                        FilterIcon()
+                        Box(Modifier.size(36.dp).clickable {
+                            draftFilter = appliedFilter
+                            showFilters = true
+                        }, contentAlignment = Alignment.Center) { FilterIcon() }
                     }
+                    if (showFilters) {
+                        CatalogFilters(
+                            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                            filter = draftFilter,
+                            roles = (if (tab == CatalogTab.PROJECTS) filteredRoleNames(availableProjects.map { it.role }) else filteredRoleNames(availablePeople.map { it.role })),
+                            skills = (if (tab == CatalogTab.PROJECTS) availableProjects.flatMap { it.skills } else availablePeople.flatMap { it.skills }).distinct().sorted(),
+                            onFilterChange = { draftFilter = it },
+                            onApply = {
+                                appliedFilter = draftFilter
+                                cardIndex = 0
+                                showFilters = false
+                            },
+                            onBack = { showFilters = false },
+                        )
+                    } else {
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
-                    CatalogTabs(tab) { tab = it; cardIndex = 0 }
+                    CatalogTabs(tab) {
+                        tab = it
+                        cardIndex = 0
+                        appliedFilter = CatalogFilter()
+                        draftFilter = CatalogFilter()
+                    }
                     Text(
                         if (showProjectsInitially) {
                             "От имени: моя анкета. Специалисты доступны в проектном режиме."
@@ -125,15 +174,24 @@ fun CatalogScreen(
                         PrimaryButton("Повторить загрузку", onRetry)
                     }
                     if (!isLoading && noVisibleCard) {
-                        Text("Примеры закончились. Можно начать просмотр заново.", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(top = 20.dp))
-                        PrimaryButton("Посмотреть сначала", onClick = { cardIndex = 0 })
+                        val hasFilters = appliedFilter != CatalogFilter()
+                        Text(
+                            if (hasFilters) "По выбранным фильтрам ничего не найдено." else "Карточки закончились. Можно начать просмотр заново.",
+                            color = TextDarkColor,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f).padding(top = 20.dp),
+                        )
+                        if (hasFilters) {
+                            PrimaryButton("Сбросить фильтры", onClick = { appliedFilter = CatalogFilter(); draftFilter = CatalogFilter(); cardIndex = 0 })
+                        } else {
+                            PrimaryButton("Посмотреть сначала", onClick = { cardIndex = 0 })
+                        }
                     } else if (!isLoading && isTablet) {
                         Row(
                             Modifier.weight(1f).fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
                             verticalAlignment = Alignment.Top,
                         ) {
-                            CatalogFilters(Modifier.width(180.dp))
                             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) {
                                 CatalogCard(tab, favorites, onFavoriteToggle, visibleProject, visiblePerson)
                                 Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
@@ -162,6 +220,7 @@ fun CatalogScreen(
                             cardIndex += 1
                         },
                     )
+                    }
                 }
             }
         }
@@ -206,28 +265,55 @@ private fun CatalogProjectItem.toFavoriteItem() = FavoriteItem(
 )
 
 @Composable
-private fun CatalogFilters(modifier: Modifier = Modifier) {
-    Column(modifier) {
+private fun filteredRoleNames(roles: List<String>) = roles.distinct().sorted()
+
+@Composable
+private fun CatalogFilters(
+    modifier: Modifier = Modifier,
+    filter: CatalogFilter,
+    roles: List<String>,
+    skills: List<String>,
+    onFilterChange: (CatalogFilter) -> Unit,
+    onApply: () -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(modifier.padding(4.dp)) {
         Text("Фильтры", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text("Роль", color = TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-        Surface(
-            color = InputBgColor,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Все роли", color = TextDarkColor, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+        Text("Подбери анкеты по роли, навыку и формату работы", color = MutedTextColor, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 16.dp))
+        FilterDropdown("Роль", filter.role, listOf("Все роли") + roles) { onFilterChange(filter.copy(role = it)) }
+        FilterDropdown("Навыки", filter.skill, listOf("Любые навыки") + skills) { onFilterChange(filter.copy(skill = it)) }
+        FilterDropdown("Формат работы", filter.workFormat.label, CatalogWorkFormat.values().map { it.label }) { label ->
+            onFilterChange(filter.copy(workFormat = CatalogWorkFormat.values().first { it.label == label }))
         }
-        Text("Навыки", color = TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-        Surface(
-            color = InputBgColor,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Например, Python", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+        PrimaryButton("Применить", onApply, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
+        SecondaryButton("Назад", onBack, Modifier.fillMaxWidth().padding(top = 8.dp))
+    }
+}
+
+@Composable
+private fun FilterDropdown(label: String, selected: String, options: List<String>, onSelect: (String) -> Unit) {
+    var expanded by remember(label) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        Text(label, color = TextDarkColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 7.dp))
+        Box {
+            Surface(
+                color = InputBgColor, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, BorderColor),
+                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+            ) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(selected, color = TextDarkColor, fontSize = 14.sp)
+                    Text("⌄", color = PrimaryButtonColor, fontSize = 16.sp)
+                }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.heightIn(max = 280.dp).background(CardBgColor)) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option, color = TextDarkColor) },
+                        onClick = { onSelect(option); expanded = false },
+                    )
+                }
+            }
         }
-        Text("Фильтры уточняют выдачу", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(top = 14.dp), lineHeight = 15.sp)
     }
 }
 

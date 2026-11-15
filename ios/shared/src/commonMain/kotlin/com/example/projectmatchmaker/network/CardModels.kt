@@ -45,6 +45,7 @@ data class PublicProfileDto(
     val experience: String,
     val interests: String,
     @SerialName("role_id") val roleId: Int? = null,
+    @SerialName("work_format") val workFormat: String? = null,
     val skills: List<SkillLevelDto> = emptyList(),
 )
 
@@ -78,6 +79,7 @@ data class ProjectDto(
     val description: String,
     val status: String,
     @SerialName("created_at") val createdAt: String,
+    @SerialName("work_format") val workFormat: String? = null,
     val skills: List<ProjectSkillDto> = emptyList(),
     @SerialName("role_ids") val roleIds: List<Int> = emptyList(),
 )

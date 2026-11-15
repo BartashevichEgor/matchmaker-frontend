@@ -42,11 +42,15 @@ fun ChatsScreen(
     onCatalog: () -> Unit,
     onMatches: () -> Unit,
     onProfile: () -> Unit,
+    showIncomingMatchChat: Boolean = false,
 ) {
-    var selectedId by remember { mutableStateOf(demoChats.first().id) }
+    val chatItems = if (showIncomingMatchChat) demoChats + demoIncomingChat else demoChats
+    var selectedId by remember(showIncomingMatchChat) {
+        mutableStateOf(if (showIncomingMatchChat) demoIncomingChat.id else demoChats.first().id)
+    }
     var draft by remember { mutableStateOf("") }
     var sentMessages by remember { mutableStateOf(emptyMap<String, List<DemoMessage>>()) }
-    val selectedChat = demoChats.firstOrNull { it.id == selectedId } ?: demoChats.first()
+    val selectedChat = chatItems.firstOrNull { it.id == selectedId } ?: chatItems.first()
     val messages = selectedChat.messages + sentMessages[selectedChat.id].orEmpty()
 
     ScreenFrame(MainDestination.CHATS, onCatalog, onProfile, onMatches, {}) {
@@ -60,7 +64,7 @@ fun ChatsScreen(
                     modifier = Modifier.fillMaxWidth().height(104.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(demoChats, key = { it.id }) { chat ->
+                    items(chatItems, key = { it.id }) { chat ->
                         ChatPreview(chat, selected = chat.id == selectedId) { selectedId = chat.id }
                     }
                 }

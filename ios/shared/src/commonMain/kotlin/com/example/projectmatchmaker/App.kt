@@ -67,6 +67,13 @@ private fun ProfileData.isReadyForMainApp(): Boolean =
         role.isNotBlank() &&
         skills.isNotEmpty()
 
+private fun String?.toCatalogWorkFormat(): String? = when (this?.trim()?.lowercase()) {
+    "remote", "remotely", "удаленно", "удалённо" -> "Удалённо"
+    "hybrid", "гибрид", "гибридный" -> "Гибридный"
+    "office", "onsite", "в офисе", "офис" -> "В офисе"
+    else -> this?.trim()?.takeIf(String::isNotBlank)
+}
+
 private fun CandidateScoreDto.toCatalogPerson(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = CatalogPersonItem(
     name = listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { profile.username },
     role = profile.roleId?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty().ifBlank { "Специалист" },
@@ -74,6 +81,7 @@ private fun CandidateScoreDto.toCatalogPerson(roles: List<CatalogItemDto>, skill
     skills = profile.skills.mapNotNull { skill -> skills.firstOrNull { it.id == skill.skillId }?.name },
     score = (score * 100).toInt(),
     id = profile.userId,
+    workFormat = profile.workFormat.toCatalogWorkFormat(),
 )
 
 private fun ProjectDto.toProject(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = ProjectData(
@@ -117,6 +125,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var sessionRevision by remember { mutableStateOf(0) }
     var matchReloadKey by remember { mutableStateOf(0) }
     var matchItems by remember { mutableStateOf<List<MatchDto>?>(null) }
+    var incomingLikeAccepted by remember { mutableStateOf(false) }
+    var incomingLikeDismissed by remember { mutableStateOf(false) }
     var roleCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
     var skillCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
     var ownedProjectId by remember { mutableStateOf<Int?>(null) }
@@ -197,6 +207,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                             skills = item.project.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
                             score = (item.score * 100).toInt(),
                             id = item.project.id,
+                            workFormat = item.project.workFormat.toCatalogWorkFormat(),
                         )
                     }
                     catalogPeople = candidates.map { it.toCatalogPerson(roleCatalog, skillCatalog) }
@@ -504,8 +515,23 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 },
             )
 
-            AppScreen.MATCHES -> MatchesScreen(openCatalog, openChats, openProfile, backendMatches = matchItems)
-            AppScreen.CHATS -> ChatsScreen(openCatalog, openMatches, openProfile)
+            AppScreen.MATCHES -> MatchesScreen(
+                onCatalog = openCatalog,
+                onChats = openChats,
+                onProfile = openProfile,
+                backendMatches = matchItems,
+                incomingLikeAccepted = incomingLikeAccepted,
+                incomingLikeDismissed = incomingLikeDismissed,
+                onAcceptIncomingLike = { incomingLikeAccepted = true; incomingLikeDismissed = false },
+                onDismissIncomingLike = { incomingLikeDismissed = true },
+                onOpenIncomingChat = openChats,
+            )
+            AppScreen.CHATS -> ChatsScreen(
+                onCatalog = openCatalog,
+                onMatches = openMatches,
+                onProfile = openProfile,
+                showIncomingMatchChat = incomingLikeAccepted,
+            )
         }
     }
 }

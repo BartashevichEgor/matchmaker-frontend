@@ -47,6 +47,16 @@ val demoMatches = listOf(
     ),
 )
 
+val demoIncomingMatch = DemoMatch(
+    id = "codegarden",
+    name = "CodeGarden",
+    role = "Команда ищет UI/UX-дизайнера",
+    initials = "CG",
+    skills = listOf("Figma", "UX", "Kotlin"),
+    description = "Команда посмотрела вашу анкету и хочет пригласить вас в проект.",
+    matchPercent = 93,
+)
+
 val demoChats = listOf(
     DemoChat(
         id = "alexey",
@@ -68,5 +78,16 @@ val demoChats = listOf(
             DemoMessage("TeamFlow", "Привет! Рады познакомиться.", "17:20"),
             DemoMessage("TeamFlow", "Мы отправили тебе описание проекта.", "17:22"),
         ),
+    ),
+)
+
+val demoIncomingChat = DemoChat(
+    id = "codegarden",
+    name = "CodeGarden",
+    initials = "CG",
+    lastMessage = "Привет! Расскажем подробнее о проекте?",
+    messages = listOf(
+        DemoMessage("CodeGarden", "Привет! Нам понравилась твоя анкета. Хотим пригласить тебя в команду.", "сейчас"),
+        DemoMessage("Вы", "Привет! Расскажите, пожалуйста, подробнее о проекте.", "сейчас", isMine = true),
     ),
 )
