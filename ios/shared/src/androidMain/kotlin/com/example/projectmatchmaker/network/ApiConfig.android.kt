@@ -1,8 +1,8 @@
 package com.example.projectmatchmaker.network
 
 /**
- * Android-эмулятор видит backend на компьютере через специальный адрес
- * 10.0.2.2. Для физического телефона нужен адрес компьютера в локальной сети.
+ * Для локальной разработки используем ADB reverse (adb reverse tcp:8000 tcp:8000),
+ * чтобы эмулятор обращался к backend на компьютере через loopback.
  */
-actual fun platformApiBaseUrl(): String = "http://10.0.2.2:8000"
+actual fun platformApiBaseUrl(): String = "http://127.0.0.1:8000"
 
