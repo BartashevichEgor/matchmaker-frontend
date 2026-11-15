@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,6 +25,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ResetPasswordScreen(
+    email: String = "",
+    onReset: suspend (String, String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
     onBack: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -30,6 +34,9 @@ fun ResetPasswordScreen(
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(DarkBgColor), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.layout.Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -49,7 +56,15 @@ fun ResetPasswordScreen(
                         androidx.compose.material3.OutlinedTextField(password, { password = it }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(12.dp))
                         FormLabel("Повтори пароль")
                         androidx.compose.material3.OutlinedTextField(confirm, { confirm = it }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(12.dp))
-                        PrimaryButton("Сохранить пароль", { submitted = true }, code.length == 6 && password.length >= 8 && password == confirm)
+                        error?.let { Text(it, color = ErrorColor, fontSize = 12.sp) }
+                        PrimaryButton("Сохранить пароль", {
+                            scope.launch {
+                                busy = true
+                                val result = onReset(code, password)
+                                busy = false
+                                result.onSuccess { submitted = true }.onFailure { error = it.message ?: "Не удалось изменить пароль" }
+                            }
+                        }, code.length == 6 && password.length >= 8 && password == confirm && !busy)
                         Text("Вернуться ко входу", color = PrimaryButtonColor, modifier = Modifier.padding(top = 10.dp).clickable(onClick = onBack))
                     }
                 }
@@ -60,4 +75,4 @@ fun ResetPasswordScreen(
 
 @Preview(name = "Новый пароль", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
-private fun ResetPasswordScreenPreview() { MaterialTheme { ResetPasswordScreen({}, {}) } }
+private fun ResetPasswordScreenPreview() { MaterialTheme { ResetPasswordScreen(onBack = {}, onDone = {}) } }

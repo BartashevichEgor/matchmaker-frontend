@@ -45,3 +45,11 @@ data class RefreshTokenRequest(
     @SerialName("refresh_token") val refreshToken: String,
 )
 
+@Serializable
+data class ResetPasswordRequest(
+    val email: String,
+    val code: String,
+    val password: String,
+    @SerialName("password_confirm") val passwordConfirm: String,
+)
+

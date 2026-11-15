@@ -8,6 +8,7 @@ import androidx.security.crypto.MasterKey
 actual object TokenStorage {
     private const val FILE_NAME = "secure_auth"
     private const val TOKEN_KEY = "jwt_access_token"
+    private const val REFRESH_TOKEN_KEY = "jwt_refresh_token"
 
     private var preferences: SharedPreferences? = null
 
@@ -37,8 +38,15 @@ actual object TokenStorage {
 
     actual fun getToken(): String? = preferences?.getString(TOKEN_KEY, null)
 
+    actual fun saveRefreshToken(token: String) {
+        checkNotNull(preferences) { "TokenStorage.initialize() должен быть вызван при запуске Android" }
+            .edit().putString(REFRESH_TOKEN_KEY, token).apply()
+    }
+
+    actual fun getRefreshToken(): String? = preferences?.getString(REFRESH_TOKEN_KEY, null)
+
     actual fun clearToken() {
-        preferences?.edit()?.remove(TOKEN_KEY)?.apply()
+        preferences?.edit()?.remove(TOKEN_KEY)?.remove(REFRESH_TOKEN_KEY)?.apply()
     }
 }
 

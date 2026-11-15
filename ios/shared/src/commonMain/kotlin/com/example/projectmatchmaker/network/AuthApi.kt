@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -96,6 +97,31 @@ class AuthApi(
         }
         return response.body()
     }
+
+    suspend fun forgotPassword(email: String): MessageResponse {
+        val response = client.post("$apiUrl/auth/forgot-password") {
+            contentType(ContentType.Application.Json)
+            setBody(EmailRequest(email.trim()))
+        }
+        if (!response.status.isSuccess()) throw ApiException(readError(response.bodyAsText(), response.status.value))
+        return response.body()
+    }
+
+    suspend fun resetPassword(email: String, code: String, password: String): MessageResponse {
+        val response = client.post("$apiUrl/auth/reset-password") {
+            contentType(ContentType.Application.Json)
+            setBody(ResetPasswordRequest(email.trim(), code.trim(), password, password))
+        }
+        if (!response.status.isSuccess()) throw ApiException(readError(response.bodyAsText(), response.status.value))
+        return response.body()
+    }
+
+    suspend fun logout(accessToken: String): MessageResponse {
+        val response = client.post("$apiUrl/auth/logout") { bearerAuth(accessToken) }
+        if (!response.status.isSuccess()) throw ApiException(readError(response.bodyAsText(), response.status.value))
+        return response.body()
+    }
+
 
     fun close() {
         client.close()
