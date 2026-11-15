@@ -21,6 +21,9 @@ private enum class AppScreen {
     ROLE_SELECTION,
     ADD_SKILLS,
     EDUCATION_LEVEL,
+    CREATE_PROJECT,
+    MANAGE_PROJECT,
+    RESET_PASSWORD,
     PROFILE,
     FAVORITES,
     CATALOG,
@@ -40,6 +43,7 @@ private enum class AppScreen {
 fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var screen by remember { mutableStateOf(AppScreen.LOGIN) }
     var profile by remember { mutableStateOf(ProfileData()) }
+    var project by remember { mutableStateOf(ProjectData()) }
     var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }
     val authRepository = remember(useBackend) { if (useBackend) AuthRepository() else null }
 
@@ -102,6 +106,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
                 onBack = { screen = AppScreen.LOGIN },
+                onCodeSent = { screen = AppScreen.RESET_PASSWORD },
+            )
+
+            AppScreen.RESET_PASSWORD -> ResetPasswordScreen(
+                onBack = { screen = AppScreen.LOGIN },
+                onDone = { screen = AppScreen.LOGIN },
             )
 
             AppScreen.CREATE_PROFILE -> CreateProfileScreen(
@@ -151,6 +161,29 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 profile = profile,
                 onEdit = { screen = AppScreen.CREATE_PROFILE },
                 onFavorites = { screen = AppScreen.FAVORITES },
+                onCreateProject = { screen = AppScreen.CREATE_PROJECT },
+                onManageProject = { screen = AppScreen.MANAGE_PROJECT },
+                hasProject = project.title.isNotBlank(),
+                onCatalog = openCatalog,
+                onMatches = openMatches,
+                onChats = openChats,
+            )
+
+            AppScreen.CREATE_PROJECT -> CreateProjectScreen(
+                project = project,
+                onProjectChange = { project = it },
+                onBack = { screen = AppScreen.PROFILE },
+                onSave = { project = project.copy(published = true); screen = AppScreen.PROFILE },
+                onCatalog = openCatalog,
+                onMatches = openMatches,
+                onChats = openChats,
+            )
+
+            AppScreen.MANAGE_PROJECT -> ManageProjectScreen(
+                project = project,
+                onProjectChange = { project = it },
+                onBack = { screen = AppScreen.PROFILE },
+                onSave = { screen = AppScreen.PROFILE },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,

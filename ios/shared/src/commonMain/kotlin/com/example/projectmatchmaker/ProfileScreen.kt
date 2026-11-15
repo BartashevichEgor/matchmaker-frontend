@@ -29,6 +29,9 @@ fun ProfileScreen(
     profile: ProfileData,
     onEdit: () -> Unit,
     onFavorites: () -> Unit,
+    onCreateProject: () -> Unit = {},
+    onManageProject: () -> Unit = {},
+    hasProject: Boolean = false,
     onCatalog: () -> Unit,
     onMatches: () -> Unit,
     onChats: () -> Unit,
@@ -130,6 +133,29 @@ fun ProfileScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                 )
+
+                    Surface(
+                        color = PanelBgColor,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clickable(
+                            onClick = if (hasProject) onManageProject else onCreateProject,
+                        ),
+                    ) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 11.dp)) {
+                            Text(
+                                if (hasProject) "Мой проект" else "Создать проект",
+                                color = TextDarkColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                if (hasProject) "Открыть управление проектом" else "Опубликовать проект и найти команду",
+                                color = MutedTextColor,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    }
                     Text(
                     profile.about.ifBlank { "Описание пока не заполнено" },
                     color = if (profile.about.isBlank()) MutedTextColor else TextDarkColor,
@@ -181,11 +207,11 @@ private val previewProfile = ProfileData(
 @Preview(name = "Мой профиль · телефон", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
-    MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, {}) }
+    MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, false, {}, {}, {}) }
 }
 
 @Preview(name = "Мой профиль · планшет", widthDp = 768, heightDp = 1024, showBackground = true)
 @Composable
 fun ProfileTabletScreenPreview() {
-    MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, {}) }
+    MaterialTheme { ProfileScreen(previewProfile, {}, {}, {}, {}, false, {}, {}, {}) }
 }

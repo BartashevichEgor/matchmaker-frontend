@@ -28,7 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ForgotPasswordScreen(onBack: () -> Unit) {
+fun ForgotPasswordScreen(
+    onBack: () -> Unit,
+    onCodeSent: () -> Unit = {},
+) {
     var email by remember { mutableStateOf("") }
     Box(Modifier.fillMaxSize().background(DarkBgColor), contentAlignment = Alignment.Center) {
         Column(
@@ -43,7 +46,7 @@ fun ForgotPasswordScreen(onBack: () -> Unit) {
                     Text("Восстановление пароля", color = TextDarkColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Text("Укажи почту, и мы отправим код восстановления.", color = MutedTextColor, fontSize = 13.sp)
                     FormField(email, { email = it }, "you@example.com")
-                    PrimaryButton("Отправить код", {}, email.contains("@"))
+                    PrimaryButton("Отправить код", onCodeSent, email.contains("@"))
                     Text(
                         "Вернуться ко входу",
                         color = PrimaryButtonColor,
