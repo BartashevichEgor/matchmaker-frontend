@@ -6,7 +6,9 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -29,7 +31,7 @@ class CardsApi(
     private val accessToken: () -> String? = { null },
 ) {
     private val apiUrl = "${baseUrl.trimEnd('/')}/api/v1"
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }
     private val client = HttpClient {
         expectSuccess = false
         install(ContentNegotiation) { json(json) }
@@ -37,6 +39,31 @@ class CardsApi(
 
     suspend fun myProfile(): ProfileReadDto =
         client.get("$apiUrl/profiles/me") { authorize() }.checked().body()
+
+    suspend fun updateProfile(profile: ProfileUpdateDto): ProfileReadDto = client.patch("$apiUrl/profiles/me") {
+        authorize()
+        contentType(ContentType.Application.Json)
+        setBody(profile)
+    }.checked().body()
+
+    suspend fun updateProfileSkills(skills: List<SkillLevelDto>): ProfileReadDto =
+        client.put("$apiUrl/profiles/me/skills") {
+            authorize()
+            contentType(ContentType.Application.Json)
+            setBody(ProfileSkillsRequestDto(skills))
+        }.checked().body()
+
+    suspend fun skills(offset: Int = 0, limit: Int = 100): List<CatalogItemDto> =
+        client.get("$apiUrl/skills") {
+            parameter("offset", offset)
+            parameter("limit", limit)
+        }.checked().body()
+
+    suspend fun roles(offset: Int = 0, limit: Int = 100): List<CatalogItemDto> =
+        client.get("$apiUrl/roles") {
+            parameter("offset", offset)
+            parameter("limit", limit)
+        }.checked().body()
 
     suspend fun projects(
         offset: Int = 0,
@@ -53,6 +80,27 @@ class CardsApi(
         roleId?.let { parameter("role_id", it) }
     }.checked().body()
 
+    suspend fun createProject(project: ProjectWriteDto): ProjectDto =
+        client.post("$apiUrl/projects") {
+            authorize()
+            contentType(ContentType.Application.Json)
+            setBody(project)
+        }.checked().body()
+
+    suspend fun updateProject(projectId: Int, project: ProjectWriteDto): ProjectDto =
+        client.put("$apiUrl/projects/$projectId") {
+            authorize()
+            contentType(ContentType.Application.Json)
+            setBody(project)
+        }.checked().body()
+
+    suspend fun updateProjectStatus(projectId: Int, status: String): ProjectDto =
+        client.patch("$apiUrl/projects/$projectId/status") {
+            authorize()
+            contentType(ContentType.Application.Json)
+            setBody(StatusRequestDto(status))
+        }.checked().body()
+
     suspend fun recommendedProjects(limit: Int = 20, offset: Int = 0): List<ProjectScoreDto> =
         client.get("$apiUrl/recommendations/projects") {
             authorize()
@@ -66,6 +114,9 @@ class CardsApi(
             parameter("limit", limit)
             parameter("offset", offset)
         }.checked().body()
+
+    suspend fun profile(userId: Int): PublicProfileDto =
+        client.get("$apiUrl/profiles/$userId") { authorize() }.checked().body()
 
     suspend fun swipeProject(projectId: Int, decision: String): SwipeResponseDto =
         client.put("$apiUrl/projects/$projectId/my-swipe") {

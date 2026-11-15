@@ -8,11 +8,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.example.projectmatchmaker.auth.AuthRepository
 import com.example.projectmatchmaker.auth.TokenStorage
 import com.example.projectmatchmaker.network.CardsApi
+import com.example.projectmatchmaker.network.CatalogItemDto
+import com.example.projectmatchmaker.network.CandidateScoreDto
+import com.example.projectmatchmaker.network.ProfileReadDto
+import com.example.projectmatchmaker.network.ProfileUpdateDto
+import com.example.projectmatchmaker.network.ProfileSkillsRequestDto
+import com.example.projectmatchmaker.network.ProjectWriteDto
+import com.example.projectmatchmaker.network.ProjectSkillDto
+import com.example.projectmatchmaker.network.ProjectDto
+import com.example.projectmatchmaker.network.SkillLevelDto
+import com.example.projectmatchmaker.network.MatchDto
 
-private const val DEFAULT_USE_BACKEND = false
+private const val DEFAULT_USE_BACKEND = true
 
 private enum class AppScreen {
     LOGIN,
@@ -33,6 +45,49 @@ private enum class AppScreen {
     CHATS,
 }
 
+private fun ProfileReadDto.toProfile(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>, email: String) = ProfileData(
+    username = username,
+    email = email,
+    firstName = firstName,
+    lastName = lastName,
+    role = roleId?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty(),
+    roleId = roleId,
+    about = bio,
+    skills = this.skills.mapNotNull { skill -> skills.firstOrNull { it.id == skill.skillId }?.name },
+    experience = experience,
+    github = githubUrl.orEmpty(),
+    backendUserId = userId,
+    backendProfileId = id,
+)
+
+private fun CandidateScoreDto.toCatalogPerson(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = CatalogPersonItem(
+    name = listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { profile.username },
+    role = profile.roleId?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty().ifBlank { "Специалист" },
+    bio = profile.bio,
+    skills = profile.skills.mapNotNull { skill -> skills.firstOrNull { it.id == skill.skillId }?.name },
+    score = (score * 100).toInt(),
+    id = profile.userId,
+)
+
+private fun ProjectDto.toProject(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = ProjectData(
+    id = id,
+    title = title,
+    description = description,
+    role = roleIds.firstOrNull()?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty(),
+    skills = this.skills.mapNotNull { skill -> skills.firstOrNull { it.id == skill.skillId }?.name }.joinToString(", "),
+    published = status == "open",
+    visible = status != "blocked",
+)
+
+private fun ProjectData.toWriteDto(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = ProjectWriteDto(
+    title = title.trim(),
+    description = description.trim(),
+    skills = this.skills.split(',').map(String::trim).filter(String::isNotBlank).mapNotNull { name ->
+        skills.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { ProjectSkillDto(it.id, 3) }
+    },
+    roleIds = roles.firstOrNull { it.name.equals(role.trim(), ignoreCase = true) }?.let { listOf(it.id) }.orEmpty(),
+)
+
 /**
  * Навигация приложения. Обычный запуск использует backend, а preview передаёт
  * useBackend=false, чтобы каждый экран можно было просматривать без сервера.
@@ -52,6 +107,14 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var catalogLoading by remember { mutableStateOf(false) }
     var catalogError by remember { mutableStateOf<String?>(null) }
     var catalogReloadKey by remember { mutableStateOf(0) }
+    var sessionRevision by remember { mutableStateOf(0) }
+    var matchReloadKey by remember { mutableStateOf(0) }
+    var matchItems by remember { mutableStateOf<List<MatchDto>?>(null) }
+    var roleCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
+    var skillCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
+    var ownedProjectId by remember { mutableStateOf<Int?>(null) }
+    var backendError by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     val authRepository = remember(useBackend) { if (useBackend) AuthRepository() else null }
     val cardsApi = remember(useBackend) {
         if (useBackend) CardsApi(accessToken = { TokenStorage.getToken() }) else null
@@ -64,25 +127,54 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
         }
     }
 
-    androidx.compose.runtime.LaunchedEffect(screen, useBackend, catalogReloadKey) {
+    androidx.compose.runtime.LaunchedEffect(useBackend) {
+        if (useBackend && cardsApi != null) {
+            runCatching { cardsApi.roles() }.onSuccess { roleCatalog = it }
+            runCatching { cardsApi.skills() }.onSuccess { skillCatalog = it }
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(screen, useBackend, sessionRevision, catalogReloadKey, matchReloadKey) {
         val canUseBackend = useBackend && authRepository?.hasSavedSession() == true
-        if (screen == AppScreen.CATALOG && canUseBackend && cardsApi != null) {
-            catalogLoading = true
-            catalogError = null
-            runCatching { cardsApi.recommendedProjects() }
-                .onSuccess { items ->
-                    catalogProjects = items.map { item ->
+        if (canUseBackend && cardsApi != null) {
+            if (screen == AppScreen.CATALOG) {
+                catalogLoading = true
+                catalogError = null
+                backendError = null
+                runCatching {
+                    val owned = cardsApi.projects(mine = true).firstOrNull()
+                    ownedProjectId = owned?.id
+                    val projects = cardsApi.recommendedProjects()
+                    val candidates = owned?.let { cardsApi.recommendedCandidates(it.id) }.orEmpty()
+                    projects to candidates
+                }.onSuccess { (projects, candidates) ->
+                    catalogProjects = projects.map { item ->
                         CatalogProjectItem(
                             title = item.project.title,
                             description = item.project.description,
-                            role = item.project.roleIds.firstOrNull()?.let { "Роль #$it" } ?: "Ищем участников",
-                            skills = item.project.skills.map { "#${it.skillId}" },
+                            role = item.project.roleIds.firstOrNull()?.let { id -> roleCatalog.firstOrNull { it.id == id }?.name } ?: "Ищем участников",
+                            skills = item.project.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
                             score = (item.score * 100).toInt(),
+                            id = item.project.id,
                         )
                     }
+                    catalogPeople = candidates.map { it.toCatalogPerson(roleCatalog, skillCatalog) }
+                }.onFailure {
+                    catalogError = it.message ?: "Не удалось загрузить каталог"
+                    backendError = catalogError
                 }
-                .onFailure { catalogError = it.message ?: "Не удалось загрузить каталог" }
-            catalogLoading = false
+                catalogLoading = false
+            }
+            if (screen == AppScreen.PROFILE || screen == AppScreen.CATALOG || screen == AppScreen.MATCHES) {
+                runCatching { cardsApi.myProfile() }.onSuccess { profile = it.toProfile(roleCatalog, skillCatalog, profile.email) }
+                runCatching { cardsApi.projects(mine = true).firstOrNull() }.onSuccess { owned ->
+                    ownedProjectId = owned?.id
+                    project = owned?.toProject(roleCatalog, skillCatalog) ?: ProjectData()
+                }
+            }
+            if (screen == AppScreen.MATCHES) {
+                runCatching { cardsApi.matches() }.onSuccess { matchItems = it }.onFailure { backendError = it.message }
+            }
         }
     }
 
@@ -105,10 +197,24 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             AppScreen.LOGIN -> LoginScreen(
                 onLogin = { email, password ->
                     val result = authRepository?.login(email, password) ?: Result.success(Unit)
-                    result.onSuccess { profile = profile.copy(email = email.trim()) }
+                    result.onSuccess {
+                        profile = profile.copy(email = email.trim())
+                        if (useBackend && cardsApi != null) {
+                            // Load the server profile before deciding whether onboarding is needed.
+                            runCatching {
+                                roleCatalog = cardsApi.roles()
+                                skillCatalog = cardsApi.skills()
+                                cardsApi.myProfile()
+                            }.onSuccess { remote ->
+                                profile = remote.toProfile(roleCatalog, skillCatalog, email.trim())
+                                ownedProjectId = cardsApi.projects(mine = true).firstOrNull()?.id
+                            }
+                        }
+                    }
                     result
                 },
                 onAuthenticated = {
+                    sessionRevision += 1
                     screen = if (profileIsReady) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
                 },
                 onNavigateToRegister = { screen = AppScreen.REGISTER },
@@ -116,6 +222,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             )
 
             AppScreen.REGISTER -> RegisterScreen(
+                initialMode = profile.registrationMode,
+                onModeSelected = { profile = profile.copy(registrationMode = it) },
                 onRegister = { username, email, password ->
                     val result = authRepository?.register(username, email, password) ?: Result.success(Unit)
                     result.onSuccess {
@@ -141,10 +249,19 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
                 onBack = { screen = AppScreen.LOGIN },
-                onCodeSent = { screen = AppScreen.RESET_PASSWORD },
+                onSendCode = { email ->
+                    val result = authRepository?.forgotPassword(email) ?: Result.success(Unit)
+                    result.onSuccess { profile = profile.copy(email = email.trim()); screen = AppScreen.RESET_PASSWORD }
+                    result
+                },
             )
 
             AppScreen.RESET_PASSWORD -> ResetPasswordScreen(
+                email = profile.email,
+                onReset = { code, password ->
+                    val result = authRepository?.resetPassword(profile.email, code, password) ?: Result.success(Unit)
+                    result
+                },
                 onBack = { screen = AppScreen.LOGIN },
                 onDone = { screen = AppScreen.LOGIN },
             )
@@ -175,7 +292,35 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onProfileChange = { profile = it },
                 canCreate = skillsAreValid,
                 onBack = { screen = AppScreen.CREATE_PROFILE },
-                onCreate = { if (skillsAreValid) screen = AppScreen.PROFILE },
+                onCreate = {
+                    if (skillsAreValid) {
+                        coroutineScope.launch {
+                            val result = runCatching {
+                                if (useBackend && authRepository?.hasSavedSession() == true && cardsApi != null) {
+                                    val resolvedRoleId = profile.roleId ?: roleCatalog.firstOrNull { it.name.equals(profile.role, true) }?.id
+                                    val saved = cardsApi.updateProfile(
+                                        ProfileUpdateDto(
+                                            firstName = profile.firstName.trim(),
+                                            lastName = profile.lastName.trim(),
+                                            bio = profile.about,
+                                            githubUrl = profile.github.takeIf { it.isNotBlank() },
+                                            experience = profile.experience,
+                                            interests = "",
+                                            roleId = resolvedRoleId,
+                                        ),
+                                    )
+                                    val selectedSkills = profile.skills.mapNotNull { name -> skillCatalog.firstOrNull { it.name.equals(name, true) }?.id }
+                                    val withSkills = if (selectedSkills.isNotEmpty()) {
+                                        cardsApi.updateProfileSkills(selectedSkills.map { SkillLevelDto(it, 3) })
+                                    } else saved
+                                    profile = withSkills.toProfile(roleCatalog, skillCatalog, profile.email)
+                                }
+                            }
+                            result.onSuccess { backendError = null; screen = AppScreen.PROFILE; sessionRevision += 1 }
+                                .onFailure { backendError = it.message ?: "Не удалось сохранить профиль" }
+                        }
+                    }
+                },
                 onEducationSelect = { screen = AppScreen.EDUCATION_LEVEL },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
@@ -198,7 +343,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onFavorites = { screen = AppScreen.FAVORITES },
                 onCreateProject = { screen = AppScreen.CREATE_PROJECT },
                 onManageProject = { screen = AppScreen.MANAGE_PROJECT },
-                hasProject = project.title.isNotBlank(),
+                hasProject = project.title.isNotBlank() || ownedProjectId != null,
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,
@@ -208,7 +353,22 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 project = project,
                 onProjectChange = { project = it },
                 onBack = { screen = AppScreen.PROFILE },
-                onSave = { project = project.copy(published = true); screen = AppScreen.PROFILE },
+                onSave = {
+                    coroutineScope.launch {
+                        val result = runCatching {
+                            if (useBackend && cardsApi != null && authRepository?.hasSavedSession() == true) {
+                                val payload = project.toWriteDto(roleCatalog, skillCatalog)
+                                val existingProjectId = project.id
+                                val saved = if (existingProjectId == null) cardsApi.createProject(payload) else cardsApi.updateProject(existingProjectId, payload)
+                                val published = if (!project.published && saved.status != "open") cardsApi.updateProjectStatus(saved.id, "open") else saved
+                                project = published.toProject(roleCatalog, skillCatalog)
+                                ownedProjectId = published.id
+                            } else project = project.copy(published = true)
+                        }
+                        result.onSuccess { backendError = null; screen = AppScreen.PROFILE; sessionRevision += 1 }
+                            .onFailure { backendError = it.message ?: "Не удалось сохранить проект" }
+                    }
+                },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,
@@ -218,7 +378,21 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 project = project,
                 onProjectChange = { project = it },
                 onBack = { screen = AppScreen.PROFILE },
-                onSave = { screen = AppScreen.PROFILE },
+                onSave = {
+                    coroutineScope.launch {
+                        val result = runCatching {
+                            val existingProjectId = project.id
+                            if (useBackend && cardsApi != null && authRepository?.hasSavedSession() == true && existingProjectId != null) {
+                                val saved = cardsApi.updateProject(existingProjectId, project.toWriteDto(roleCatalog, skillCatalog))
+                                val wantedStatus = if (project.published) "open" else "closed"
+                                val final = if (saved.status != wantedStatus) cardsApi.updateProjectStatus(saved.id, wantedStatus) else saved
+                                project = final.toProject(roleCatalog, skillCatalog)
+                            }
+                        }
+                        result.onSuccess { backendError = null; screen = AppScreen.PROFILE; sessionRevision += 1 }
+                            .onFailure { backendError = it.message ?: "Не удалось сохранить проект" }
+                    }
+                },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,
@@ -250,9 +424,23 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 isLoading = catalogLoading,
                 errorMessage = catalogError,
                 onRetry = { catalogReloadKey += 1 },
+                onSwipeProject = { projectId, decision ->
+                    coroutineScope.launch {
+                        runCatching { cardsApi?.swipeProject(projectId, decision) }.onFailure { catalogError = it.message }
+                        catalogReloadKey += 1
+                    }
+                },
+                onSwipePerson = { userId, decision ->
+                    coroutineScope.launch {
+                        val ownerProjectId = ownedProjectId
+                        if (ownerProjectId != null) runCatching { cardsApi?.swipeCandidate(ownerProjectId, userId, decision) }
+                            .onFailure { catalogError = it.message }
+                        catalogReloadKey += 1
+                    }
+                },
             )
 
-            AppScreen.MATCHES -> MatchesScreen(openCatalog, openChats, openProfile)
+            AppScreen.MATCHES -> MatchesScreen(openCatalog, openChats, openProfile, backendMatches = matchItems)
             AppScreen.CHATS -> ChatsScreen(openCatalog, openMatches, openProfile)
         }
     }

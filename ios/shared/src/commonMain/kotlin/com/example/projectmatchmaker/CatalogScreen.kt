@@ -37,6 +37,7 @@ data class CatalogProjectItem(
     val role: String,
     val skills: List<String>,
     val score: Int? = null,
+    val id: Int? = null,
 )
 
 data class CatalogPersonItem(
@@ -45,6 +46,7 @@ data class CatalogPersonItem(
     val bio: String,
     val skills: List<String>,
     val score: Int? = null,
+    val id: Int? = null,
 )
 
 @Composable
@@ -62,10 +64,15 @@ fun CatalogScreen(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onRetry: () -> Unit = {},
+    onSwipeProject: (Int, String) -> Unit = { _, _ -> },
+    onSwipePerson: (Int, String) -> Unit = { _, _ -> },
 ) {
     var tab by remember {
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
     }
+    var cardIndex by remember { mutableStateOf(0) }
+    val visibleProject = projects.getOrNull(cardIndex)
+    val visiblePerson = people.getOrNull(cardIndex)
     ScreenFrame(MainDestination.CATALOG, onCatalog, onProfile, onMatches, onChats) {
         PageCard {
             BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -84,7 +91,7 @@ fun CatalogScreen(
                         FilterIcon()
                     }
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
-                    CatalogTabs(tab) { tab = it }
+                    CatalogTabs(tab) { tab = it; cardIndex = 0 }
                     Spacer(Modifier.height(14.dp))
                     if (isLoading) {
                         Text("Загружаем карточки…", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
@@ -101,17 +108,33 @@ fun CatalogScreen(
                         ) {
                             CatalogFilters(Modifier.width(180.dp))
                             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) {
-                                CatalogCard(tab, favorites, onFavoriteToggle, projects, people)
+                                CatalogCard(tab, favorites, onFavoriteToggle, visibleProject, visiblePerson)
                                 Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                             }
                         }
                     } else {
                         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                            CatalogCard(tab, favorites, onFavoriteToggle, projects, people)
+                            CatalogCard(tab, favorites, onFavoriteToggle, visibleProject, visiblePerson)
                             Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                         }
                     }
-                    SwipeActions()
+                    SwipeActions(
+                        enabled = !backendEnabled || (if (tab == CatalogTab.PROJECTS) visibleProject != null else visiblePerson != null),
+                        onPass = {
+                            if (backendEnabled) {
+                                if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "pass") }
+                                else visiblePerson?.id?.let { onSwipePerson(it, "pass") }
+                            }
+                            cardIndex += 1
+                        },
+                        onLike = {
+                            if (backendEnabled) {
+                                if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "like") }
+                                else visiblePerson?.id?.let { onSwipePerson(it, "like") }
+                            }
+                            cardIndex += 1
+                        },
+                    )
                 }
             }
         }
@@ -123,17 +146,15 @@ private fun CatalogCard(
     tab: CatalogTab,
     favorites: Set<FavoriteItem>,
     onFavoriteToggle: (FavoriteItem) -> Unit,
-    projects: List<CatalogProjectItem>,
-    people: List<CatalogPersonItem>,
+    project: CatalogProjectItem?,
+    person: CatalogPersonItem?,
 ) {
     if (tab == CatalogTab.PEOPLE) {
-        val person = people.firstOrNull()
         PersonCatalogCard(
             saved = FavoriteItem.PERSON in favorites,
             person = person,
         ) { onFavoriteToggle(FavoriteItem.PERSON) }
     } else {
-        val project = projects.firstOrNull()
         ProjectCatalogCard(
             saved = FavoriteItem.PROJECT in favorites,
             project = project,
@@ -254,18 +275,18 @@ internal fun BookmarkButton(saved: Boolean, onClick: () -> Unit, modifier: Modif
 }
 
 @Composable
-private fun SwipeActions() {
+private fun SwipeActions(enabled: Boolean = true, onPass: () -> Unit = {}, onLike: () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        SwipeActionButton(false, "Не интересует")
-        SwipeActionButton(true, "Выразить интерес")
+        SwipeActionButton(false, "Не интересует", enabled, onPass)
+        SwipeActionButton(true, "Выразить интерес", enabled, onLike)
     }
 }
 
 @Composable
-private fun SwipeActionButton(liked: Boolean, label: String) {
+private fun SwipeActionButton(liked: Boolean, label: String, enabled: Boolean = true, onClick: () -> Unit = {}) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
-            modifier = Modifier.size(if (liked) 58.dp else 54.dp).clickable { },
+            modifier = Modifier.size(if (liked) 58.dp else 54.dp).clickable(enabled = enabled, onClick = onClick),
             color = if (liked) PrimaryButtonColor else CardBgColor,
             shape = CircleShape,
             border = if (liked) null else BorderStroke(1.dp, MutedTextColor),

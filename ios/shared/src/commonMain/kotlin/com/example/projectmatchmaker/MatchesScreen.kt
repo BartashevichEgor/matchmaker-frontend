@@ -24,12 +24,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.projectmatchmaker.network.MatchDto
 
 @Composable
 fun MatchesScreen(
     onCatalog: () -> Unit,
     onChats: () -> Unit,
     onProfile: () -> Unit,
+    backendMatches: List<MatchDto>? = null,
 ) {
     ScreenFrame(MainDestination.MATCHES, onCatalog, onProfile, {}, onChats) {
         PageCard {
@@ -45,11 +47,28 @@ fun MatchesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(demoMatches, key = { it.id }) { match ->
-                        MatchCard(match, onChats)
+                    if (backendMatches == null) {
+                        items(demoMatches, key = { it.id }) { match -> MatchCard(match, onChats) }
+                    } else if (backendMatches.isEmpty()) {
+                        item { Text("Пока нет взаимных совпадений.", color = MutedTextColor, fontSize = 13.sp) }
+                    } else {
+                        items(backendMatches, key = { it.id }) { match ->
+                            BackendMatchCard(match, onChats)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BackendMatchCard(match: MatchDto, onOpenChat: () -> Unit) {
+    Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Совпадение #${match.id}", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("Проект #${match.projectId} · участник #${match.candidateId}", color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            PrimaryButton("Открыть чат", onOpenChat)
         }
     }
 }

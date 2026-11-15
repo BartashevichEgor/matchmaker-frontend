@@ -4,6 +4,31 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class CatalogItemDto(val id: Int, val name: String)
+
+@Serializable
+data class ProfileUpdateDto(
+    @SerialName("first_name") val firstName: String = "",
+    @SerialName("last_name") val lastName: String = "",
+    val bio: String = "",
+    @SerialName("github_url") val githubUrl: String? = null,
+    val experience: String = "",
+    val interests: String = "",
+    @SerialName("role_id") val roleId: Int? = null,
+)
+
+@Serializable
+data class ProfileSkillsRequestDto(val skills: List<SkillLevelDto>)
+
+@Serializable
+data class ProjectWriteDto(
+    val title: String,
+    val description: String,
+    val skills: List<ProjectSkillDto> = emptyList(),
+    @SerialName("role_ids") val roleIds: List<Int> = emptyList(),
+)
+
+@Serializable
 data class SkillLevelDto(
     @SerialName("skill_id") val skillId: Int,
     val level: Int,
@@ -73,6 +98,9 @@ data class CandidateScoreDto(
 
 @Serializable
 data class SwipeRequestDto(val decision: String)
+
+@Serializable
+data class StatusRequestDto(val status: String)
 
 @Serializable
 data class MatchDto(

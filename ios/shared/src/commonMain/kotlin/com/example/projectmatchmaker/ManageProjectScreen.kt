@@ -55,5 +55,15 @@ fun ManageProjectScreen(
 @Preview(name = "Управление проектом", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
 private fun ManageProjectScreenPreview() {
-    MaterialTheme { ManageProjectScreen(ProjectData("TeamFlow", "Сервис", "Backend-разработчик", "Python, SQL"), {}, {}, {}, {}, {}, {}) }
+    MaterialTheme {
+        ManageProjectScreen(
+            ProjectData(
+                title = "TeamFlow",
+                description = "Сервис",
+                role = "Backend-разработчик",
+                skills = "Python, SQL",
+            ),
+            {}, {}, {}, {}, {}, {},
+        )
+    }
 }
