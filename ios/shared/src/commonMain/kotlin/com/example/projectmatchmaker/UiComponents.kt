@@ -249,11 +249,16 @@ fun ExpandableHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = PrimaryButtonColor,
@@ -261,6 +266,25 @@ fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
         ),
     ) {
         Text(text, color = CardBgColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = InputBgColor,
+            contentColor = PrimaryButtonColor,
+        ),
+    ) {
+        Text(text, color = PrimaryButtonColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 
