@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.projectmatchmaker.auth.AuthRepository
+import com.example.projectmatchmaker.auth.TokenStorage
+import com.example.projectmatchmaker.network.CardsApi
 
 private const val DEFAULT_USE_BACKEND = false
 
@@ -45,10 +47,43 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var profile by remember { mutableStateOf(ProfileData()) }
     var project by remember { mutableStateOf(ProjectData()) }
     var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }
+    var catalogProjects by remember { mutableStateOf(emptyList<CatalogProjectItem>()) }
+    var catalogPeople by remember { mutableStateOf(emptyList<CatalogPersonItem>()) }
+    var catalogLoading by remember { mutableStateOf(false) }
+    var catalogError by remember { mutableStateOf<String?>(null) }
+    var catalogReloadKey by remember { mutableStateOf(0) }
     val authRepository = remember(useBackend) { if (useBackend) AuthRepository() else null }
+    val cardsApi = remember(useBackend) {
+        if (useBackend) CardsApi(accessToken = { TokenStorage.getToken() }) else null
+    }
 
-    DisposableEffect(authRepository) {
-        onDispose { authRepository?.close() }
+    DisposableEffect(authRepository, cardsApi) {
+        onDispose {
+            authRepository?.close()
+            cardsApi?.close()
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(screen, useBackend, catalogReloadKey) {
+        val canUseBackend = useBackend && authRepository?.hasSavedSession() == true
+        if (screen == AppScreen.CATALOG && canUseBackend && cardsApi != null) {
+            catalogLoading = true
+            catalogError = null
+            runCatching { cardsApi.recommendedProjects() }
+                .onSuccess { items ->
+                    catalogProjects = items.map { item ->
+                        CatalogProjectItem(
+                            title = item.project.title,
+                            description = item.project.description,
+                            role = item.project.roleIds.firstOrNull()?.let { "Роль #$it" } ?: "Ищем участников",
+                            skills = item.project.skills.map { "#${it.skillId}" },
+                            score = (item.score * 100).toInt(),
+                        )
+                    }
+                }
+                .onFailure { catalogError = it.message ?: "Не удалось загрузить каталог" }
+            catalogLoading = false
+        }
     }
 
     val basicProfileIsValid =
@@ -209,6 +244,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onProfile = openProfile,
                 onMatches = openMatches,
                 onChats = openChats,
+                projects = catalogProjects,
+                people = catalogPeople,
+                backendEnabled = useBackend && authRepository?.hasSavedSession() == true,
+                isLoading = catalogLoading,
+                errorMessage = catalogError,
+                onRetry = { catalogReloadKey += 1 },
             )
 
             AppScreen.MATCHES -> MatchesScreen(openCatalog, openChats, openProfile)

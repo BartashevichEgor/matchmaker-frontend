@@ -31,6 +31,22 @@ import androidx.compose.ui.unit.sp
 
 private enum class CatalogTab { PROJECTS, PEOPLE }
 
+data class CatalogProjectItem(
+    val title: String,
+    val description: String,
+    val role: String,
+    val skills: List<String>,
+    val score: Int? = null,
+)
+
+data class CatalogPersonItem(
+    val name: String,
+    val role: String,
+    val bio: String,
+    val skills: List<String>,
+    val score: Int? = null,
+)
+
 @Composable
 fun CatalogScreen(
     favorites: Set<FavoriteItem> = emptySet(),
@@ -40,6 +56,12 @@ fun CatalogScreen(
     onProfile: () -> Unit,
     onMatches: () -> Unit,
     onChats: () -> Unit,
+    projects: List<CatalogProjectItem> = emptyList(),
+    people: List<CatalogPersonItem> = emptyList(),
+    backendEnabled: Boolean = false,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     var tab by remember {
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
@@ -64,7 +86,14 @@ fun CatalogScreen(
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
                     CatalogTabs(tab) { tab = it }
                     Spacer(Modifier.height(14.dp))
-                    if (isTablet) {
+                    if (isLoading) {
+                        Text("Загружаем карточки…", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
+                    } else if (errorMessage != null) {
+                        Text(errorMessage, color = ErrorColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
+                        PrimaryButton("Повторить", onRetry)
+                    } else if (backendEnabled && ((tab == CatalogTab.PROJECTS && projects.isEmpty()) || (tab == CatalogTab.PEOPLE && people.isEmpty()))) {
+                        Text("Ничего не найдено. Попробуй изменить фильтры.", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
+                    } else if (isTablet) {
                         Row(
                             Modifier.weight(1f).fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -72,13 +101,13 @@ fun CatalogScreen(
                         ) {
                             CatalogFilters(Modifier.width(180.dp))
                             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) {
-                                CatalogCard(tab, favorites, onFavoriteToggle)
+                                CatalogCard(tab, favorites, onFavoriteToggle, projects, people)
                                 Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                             }
                         }
                     } else {
                         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                            CatalogCard(tab, favorites, onFavoriteToggle)
+                            CatalogCard(tab, favorites, onFavoriteToggle, projects, people)
                             Text("Закладка - сохранить без лайка.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(top = 22.dp))
                         }
                     }
@@ -94,11 +123,21 @@ private fun CatalogCard(
     tab: CatalogTab,
     favorites: Set<FavoriteItem>,
     onFavoriteToggle: (FavoriteItem) -> Unit,
+    projects: List<CatalogProjectItem>,
+    people: List<CatalogPersonItem>,
 ) {
     if (tab == CatalogTab.PEOPLE) {
-        PersonCatalogCard(FavoriteItem.PERSON in favorites) { onFavoriteToggle(FavoriteItem.PERSON) }
+        val person = people.firstOrNull()
+        PersonCatalogCard(
+            saved = FavoriteItem.PERSON in favorites,
+            person = person,
+        ) { onFavoriteToggle(FavoriteItem.PERSON) }
     } else {
-        ProjectCatalogCard(FavoriteItem.PROJECT in favorites) { onFavoriteToggle(FavoriteItem.PROJECT) }
+        val project = projects.firstOrNull()
+        ProjectCatalogCard(
+            saved = FavoriteItem.PROJECT in favorites,
+            project = project,
+        ) { onFavoriteToggle(FavoriteItem.PROJECT) }
     }
 }
 
@@ -147,21 +186,21 @@ private fun CatalogTabButton(text: String, selected: Boolean, modifier: Modifier
 }
 
 @Composable
-private fun PersonCatalogCard(saved: Boolean, onSave: () -> Unit) {
+private fun PersonCatalogCard(saved: Boolean, person: CatalogPersonItem? = null, onSave: () -> Unit) {
     Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Box(Modifier.fillMaxWidth().height(112.dp).background(ProfileAvatarColor, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Surface(color = PrimaryButtonColor, shape = RoundedCornerShape(16.dp), modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) {
                     Text("87% совпадение", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 5.dp))
                 }
-                Text("АК", color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(initials(person?.name ?: "Алексей Ковалёв"), color = CardBgColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             }
             Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Алексей Ковалёв", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(person?.name ?: "Алексей Ковалёв", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 BookmarkButton(saved, onSave)
             }
-            Text("Backend-разработчик", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-            SkillChips(listOf("Python", "Django", "SQL"))
+            Text(person?.role ?: "Backend-разработчик", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            SkillChips(person?.skills ?: listOf("Python", "Django", "SQL"))
             ExpandableHeader("О себе", false) {}
             Surface(
                 color = Color.Transparent,
@@ -176,21 +215,21 @@ private fun PersonCatalogCard(saved: Boolean, onSave: () -> Unit) {
 }
 
 @Composable
-private fun ProjectCatalogCard(saved: Boolean, onSave: () -> Unit) {
+private fun ProjectCatalogCard(saved: Boolean, project: CatalogProjectItem? = null, onSave: () -> Unit) {
     Surface(color = PanelBgColor, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Box(Modifier.fillMaxWidth().height(100.dp).background(SectionBgColor, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("TeamFlow", color = PrimaryButtonColor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("Команда для учебного проекта", color = TextDarkColor, fontSize = 11.sp)
+                    Text(project?.title ?: "TeamFlow", color = PrimaryButtonColor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text(project?.description ?: "Команда для учебного проекта", color = TextDarkColor, fontSize = 11.sp)
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("TeamFlow", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(project?.title ?: "TeamFlow", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 BookmarkButton(saved, onSave)
             }
-            Text("Ищем UI/UX-дизайнера", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-            SkillChips(listOf("Figma", "UX", "UI"))
+            Text(project?.role ?: "Ищем UI/UX-дизайнера", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            SkillChips(project?.skills ?: listOf("Figma", "UX", "UI"))
             ExpandableHeader("Описание проекта", false) {}
         }
     }
