@@ -57,7 +57,7 @@ fun SkillsScreen(
                         }
                     }
                     Box(Modifier.padding(top = 4.dp)) {
-                        FormField(skillText, { skillText = it }, "Добавить навык")
+                        FormField(skillText, { skillText = it }, "Например: Kotlin, Figma, SQL")
                         Text(
                             "+",
                             color = PrimaryButtonColor,
@@ -71,6 +71,13 @@ fun SkillsScreen(
                             }.padding(horizontal = 15.dp),
                         )
                     }
+                    Text(
+                        "Добавь технологии и инструменты, которыми владеешь. Каждый навык добавляется отдельно кнопкой +.",
+                        color = MutedTextColor,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.padding(top = 5.dp, bottom = 8.dp),
+                    )
 
                     FormLabel("Опыт работы")
                     FormField(
@@ -89,10 +96,17 @@ fun SkillsScreen(
                     }
                     if (coursesExpanded) {
                         Text(
-                            "Этот раздел можно заполнить позже",
+                            "Укажи пройденные курсы или сертификаты. Например: Kotlin Basics — JetBrains, 2025.",
                             color = MutedTextColor,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(12.dp),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 4.dp),
+                        )
+                        FormField(
+                            profile.courses,
+                            { onProfileChange(profile.copy(courses = it)) },
+                            "Название курса или сертификата",
+                            minLines = 2,
                         )
                     }
                     Spacer(Modifier.height(12.dp))

@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +42,7 @@ fun CreateProfileScreen(
     onChats: () -> Unit = {},
 ) {
     var optionalExpanded by remember { mutableStateOf(false) }
+    var showRoleHelp by remember { mutableStateOf(false) }
 
     ScreenFrame(
         selected = MainDestination.PROFILE,
@@ -88,7 +92,7 @@ fun CreateProfileScreen(
                         "Что означают роли?",
                         color = PrimaryButtonColor,
                         fontSize = 12.sp,
-                        modifier = Modifier.padding(vertical = 12.dp),
+                        modifier = Modifier.padding(vertical = 12.dp).clickable { showRoleHelp = true },
                     )
 
                     ExpandableHeader("Фото и о себе · необязательно", optionalExpanded) {
@@ -114,6 +118,24 @@ fun CreateProfileScreen(
                 PrimaryButton("Далее: навыки и образование", onNext, canContinue)
             }
         }
+    }
+
+    if (showRoleHelp) {
+        AlertDialog(
+            onDismissRequest = { showRoleHelp = false },
+            title = { Text("Кто чем занимается") },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                    teamRoleGroups.forEach { (group, roles) ->
+                        Text(group, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                        roles.forEach { role ->
+                            Text("${role.title} — ${role.description}", modifier = Modifier.padding(top = 6.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showRoleHelp = false }) { Text("Понятно") } },
+        )
     }
 }
 

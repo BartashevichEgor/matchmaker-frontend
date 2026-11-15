@@ -166,7 +166,6 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 catalogLoading = false
             }
             if (screen == AppScreen.PROFILE || screen == AppScreen.CATALOG || screen == AppScreen.MATCHES) {
-                runCatching { cardsApi.myProfile() }.onSuccess { profile = it.toProfile(roleCatalog, skillCatalog, profile.email) }
                 runCatching { cardsApi.projects(mine = true).firstOrNull() }.onSuccess { owned ->
                     ownedProjectId = owned?.id
                     project = owned?.toProject(roleCatalog, skillCatalog) ?: ProjectData()
@@ -285,7 +284,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.ROLE_SELECTION -> RoleSelectionScreen(
                 selectedRole = profile.role,
-                onRoleSelected = { profile = profile.copy(role = it) },
+                onRoleSelected = { role ->
+                    profile = profile.copy(
+                        role = role,
+                        roleId = roleCatalog.firstOrNull { it.name.equals(role, ignoreCase = true) }?.id,
+                    )
+                },
                 onDone = { screen = AppScreen.CREATE_PROFILE },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
@@ -320,6 +324,11 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                         cardsApi.updateProfileSkills(selectedSkills.map { SkillLevelDto(it, 3) })
                                     } else saved
                                     profile = withSkills.toProfile(roleCatalog, skillCatalog, profile.email)
+                                        .copy(
+                                            courses = profile.courses,
+                                            role = profile.role,
+                                            roleId = resolvedRoleId,
+                                        )
                                 }
                             }
                             result.onSuccess {
@@ -354,6 +363,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onCreateProject = { screen = AppScreen.CREATE_PROJECT },
                 onManageProject = { screen = AppScreen.MANAGE_PROJECT },
                 hasProject = project.title.isNotBlank() || ownedProjectId != null,
+                onModeChange = { mode -> profile = profile.copy(registrationMode = mode) },
+                projectPublished = project.published,
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,

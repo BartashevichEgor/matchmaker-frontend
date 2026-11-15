@@ -12,6 +12,7 @@ data class ProfileData(
     val skills: List<String> = emptyList(),
     val experience: String = "",
     val education: String = "",
+    val courses: String = "",
     val github: String = "",
     val backendUserId: Int? = null,
     val backendProfileId: Int? = null,
