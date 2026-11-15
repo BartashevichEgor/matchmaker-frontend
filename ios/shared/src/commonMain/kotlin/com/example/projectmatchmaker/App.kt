@@ -207,7 +207,9 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                 cardsApi.myProfile()
                             }.onSuccess { remote ->
                                 profile = remote.toProfile(roleCatalog, skillCatalog, email.trim())
-                                ownedProjectId = cardsApi.projects(mine = true).firstOrNull()?.id
+                                val owned = cardsApi.projects(mine = true).firstOrNull()
+                                ownedProjectId = owned?.id
+                                if (owned != null) profile = profile.copy(registrationMode = "project")
                             }
                         }
                     }
@@ -215,7 +217,11 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 },
                 onAuthenticated = {
                     sessionRevision += 1
-                    screen = if (profileIsReady) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
+                    screen = when {
+                        !profileIsReady -> AppScreen.CREATE_PROFILE
+                        profile.registrationMode == "project" && ownedProjectId == null -> AppScreen.CREATE_PROJECT
+                        else -> AppScreen.CATALOG
+                    }
                 },
                 onNavigateToRegister = { screen = AppScreen.REGISTER },
                 onForgotPassword = { screen = AppScreen.FORGOT_PASSWORD },
@@ -316,7 +322,11 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                     profile = withSkills.toProfile(roleCatalog, skillCatalog, profile.email)
                                 }
                             }
-                            result.onSuccess { backendError = null; screen = AppScreen.PROFILE; sessionRevision += 1 }
+                            result.onSuccess {
+                                backendError = null
+                                screen = if (profile.registrationMode == "project") AppScreen.CREATE_PROJECT else AppScreen.PROFILE
+                                sessionRevision += 1
+                            }
                                 .onFailure { backendError = it.message ?: "Не удалось сохранить профиль" }
                         }
                     }
@@ -411,6 +421,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.CATALOG -> CatalogScreen(
                 favorites = favorites,
+                showProjectsInitially = profile.registrationMode == "developer",
                 onFavoriteToggle = { item ->
                     favorites = if (item in favorites) favorites - item else favorites + item
                 },
