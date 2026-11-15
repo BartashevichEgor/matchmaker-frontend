@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -123,18 +125,42 @@ fun CreateProfileScreen(
     if (showRoleHelp) {
         AlertDialog(
             onDismissRequest = { showRoleHelp = false },
-            title = { Text("Кто чем занимается") },
+            containerColor = CardBgColor,
+            titleContentColor = TextDarkColor,
+            textContentColor = TextDarkColor,
+            title = { Text("Кто чем занимается", fontWeight = FontWeight.Bold) },
             text = {
-                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    teamRoleGroups.forEach { (group, roles) ->
-                        Text(group, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-                        roles.forEach { role ->
-                            Text("${role.title} — ${role.description}", modifier = Modifier.padding(top = 6.dp))
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    teamRoleGroups.forEachIndexed { groupIndex, (group, roles) ->
+                        item(key = "help-group-$groupIndex") {
+                            Text(
+                                group,
+                                color = TextDarkColor,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        items(roles, key = { role -> "help-${role.title}" }) { role ->
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(PanelBgColor, RoundedCornerShape(10.dp))
+                                    .padding(10.dp),
+                            ) {
+                                Text(role.title, color = TextDarkColor, fontWeight = FontWeight.SemiBold)
+                                Text(role.description, color = MutedTextColor, fontSize = 13.sp)
+                            }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showRoleHelp = false }) { Text("Понятно") } },
+            confirmButton = {
+                TextButton(
+                    onClick = { showRoleHelp = false },
+                ) { Text("Понятно", color = PrimaryButtonColor, fontWeight = FontWeight.Bold) }
+            },
         )
     }
 }

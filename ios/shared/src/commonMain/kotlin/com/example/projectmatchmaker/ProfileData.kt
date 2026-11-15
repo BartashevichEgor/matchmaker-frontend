@@ -1,5 +1,8 @@
 package com.example.projectmatchmaker
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ProfileData(
     val username: String = "",
     val email: String = "",

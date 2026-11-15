@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.example.projectmatchmaker.auth.AuthRepository
 import com.example.projectmatchmaker.auth.TokenStorage
+import com.example.projectmatchmaker.auth.ProfileStorage
 import com.example.projectmatchmaker.network.CardsApi
 import com.example.projectmatchmaker.network.CatalogItemDto
 import com.example.projectmatchmaker.network.CandidateScoreDto
@@ -60,6 +61,12 @@ private fun ProfileReadDto.toProfile(roles: List<CatalogItemDto>, skills: List<C
     backendProfileId = id,
 )
 
+private fun ProfileData.isReadyForMainApp(): Boolean =
+    firstName.trim().length >= 2 &&
+        lastName.trim().length >= 2 &&
+        role.isNotBlank() &&
+        skills.isNotEmpty()
+
 private fun CandidateScoreDto.toCatalogPerson(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = CatalogPersonItem(
     name = listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { profile.username },
     role = profile.roleId?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty().ifBlank { "Специалист" },
@@ -99,7 +106,7 @@ private fun ProjectData.toWriteDto(roles: List<CatalogItemDto>, skills: List<Cat
  */
 fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var screen by remember { mutableStateOf(AppScreen.LOGIN) }
-    var profile by remember { mutableStateOf(ProfileData()) }
+    var profile by remember { mutableStateOf(ProfileStorage.load() ?: ProfileData()) }
     var project by remember { mutableStateOf(ProjectData()) }
     var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }
     var catalogProjects by remember { mutableStateOf(emptyList<CatalogProjectItem>()) }
@@ -127,10 +134,43 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
         }
     }
 
+    androidx.compose.runtime.LaunchedEffect(profile) {
+        if (profile != ProfileData()) ProfileStorage.save(profile)
+    }
+
     androidx.compose.runtime.LaunchedEffect(useBackend) {
         if (useBackend && cardsApi != null) {
             runCatching { cardsApi.roles() }.onSuccess { roleCatalog = it }
             runCatching { cardsApi.skills() }.onSuccess { skillCatalog = it }
+
+            // A still-valid saved session restores the profile as soon as the app opens.
+            // Keep locally saved optional fields that are not part of the current API yet.
+            if (authRepository?.hasSavedSession() == true) {
+                val cachedProfile = profile
+                runCatching { cardsApi.myProfile() }.onSuccess { remote ->
+                    val serverProfile = remote.toProfile(roleCatalog, skillCatalog, cachedProfile.email)
+                    profile = serverProfile.copy(
+                        registrationMode = cachedProfile.registrationMode,
+                        role = serverProfile.role.ifBlank { cachedProfile.role },
+                        roleId = serverProfile.roleId ?: cachedProfile.roleId,
+                        about = serverProfile.about.ifBlank { cachedProfile.about },
+                        skills = serverProfile.skills.ifEmpty { cachedProfile.skills },
+                        experience = serverProfile.experience.ifBlank { cachedProfile.experience },
+                        education = cachedProfile.education,
+                        courses = cachedProfile.courses,
+                        github = serverProfile.github.ifBlank { cachedProfile.github },
+                    )
+                    runCatching { cardsApi.projects(mine = true).firstOrNull() }.onSuccess { owned ->
+                        ownedProjectId = owned?.id
+                        project = owned?.toProject(roleCatalog, skillCatalog) ?: ProjectData()
+                        if (owned != null) profile = profile.copy(registrationMode = "project")
+                    }
+                    screen = if (profile.isReadyForMainApp()) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
+                }.onFailure {
+                    // If the API is temporarily offline, retain a complete cached profile.
+                    if (profile.isReadyForMainApp()) screen = AppScreen.CATALOG
+                }
+            }
         }
     }
 
@@ -217,7 +257,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onAuthenticated = {
                     sessionRevision += 1
                     screen = when {
-                        !profileIsReady -> AppScreen.CREATE_PROFILE
+                        !profile.isReadyForMainApp() -> AppScreen.CREATE_PROFILE
                         profile.registrationMode == "project" && ownedProjectId == null -> AppScreen.CREATE_PROJECT
                         else -> AppScreen.CATALOG
                     }

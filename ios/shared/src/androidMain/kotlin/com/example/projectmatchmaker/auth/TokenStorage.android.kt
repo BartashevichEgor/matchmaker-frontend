@@ -16,6 +16,8 @@ actual object TokenStorage {
     fun initialize(context: Context) {
         if (preferences != null) return
 
+        ProfileStorageBackend.initialize(context)
+
         val masterKey = MasterKey.Builder(context.applicationContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
