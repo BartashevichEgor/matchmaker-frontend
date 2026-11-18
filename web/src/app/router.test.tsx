@@ -61,10 +61,10 @@ describe('AppRouter', () => {
     expect(screen.getByText(/Подходят тебе/i)).toBeInTheDocument();
   });
 
-  it('renders the chat placeholder with matchId on /chat/:matchId for an authenticated user', async () => {
+  it('renders the chat screen for an authenticated user', async () => {
     setAuthenticatedUser();
     render(
-      <MemoryRouter initialEntries={['/chat/abc']}>
+      <MemoryRouter initialEntries={['/chat/4']}>
         <AuthProvider>
           <AppRouter />
         </AuthProvider>
@@ -74,7 +74,8 @@ describe('AppRouter', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: /Чат/i })).toBeInTheDocument());
     expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Matchmaker' })).toHaveAttribute('href', '/feed');
-    expect(screen.getByText(/matchId: abc/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Чат мэтча #4' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Сообщение' })).toBeInTheDocument();
   });
 
   it.each([

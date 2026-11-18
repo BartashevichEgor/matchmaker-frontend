@@ -9,6 +9,7 @@ import { NotFoundPage } from '../pages/not-found/NotFoundPage';
 import { CatalogPage } from '../pages/catalog/CatalogPage';
 import { ProfilePage } from '../pages/profile/ProfilePage';
 import { CreateProfilePage } from '../pages/profile/CreateProfilePage';
+import { ChatPage } from '../pages/chat/ChatPage';
 import { SectionPlaceholder } from '../shared/ui/SectionPlaceholder';
 
 export function AppRouter() {
@@ -52,10 +53,7 @@ export function AppRouter() {
         </Route>
 
         <Route path="/chat/:matchId">
-          <Route
-            index
-            element={<SectionPlaceholder title="Чат" description="Чат-экран готовится к подключению." matchIdFromParams />}
-          />
+          <Route index element={<ChatPage />} />
         </Route>
       </Route>
       

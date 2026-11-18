@@ -313,6 +313,43 @@ a {
   box-shadow: 0 20px 60px rgba(16, 33, 51, 0.08);
 }
 
+.chat-page {
+  display: grid;
+  width: min(100%, 760px);
+  min-height: 560px;
+  margin: 0 auto;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 14px;
+}
+
+.chat-page__header,
+.chat-page__form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-page__header h1 { margin: 2px 0 0; }
+.chat-page__status { color: var(--mm-muted); font-size: .85rem; }
+.chat-page__status--online { color: #257949; font-weight: 700; }
+.chat-page__error { margin: 0; color: var(--auth-error); }
+.chat-page__messages { display: grid; align-content: start; gap: 10px; min-height: 320px; padding: 18px; overflow-y: auto; background: var(--mm-cream-light); border-radius: 16px; }
+.chat-page__empty { margin: auto 0; color: var(--mm-muted); text-align: center; }
+.chat-message { width: fit-content; max-width: min(88%, 520px); padding: 10px 13px; color: var(--mm-ink); background: #fff; border-radius: 14px 14px 14px 3px; box-shadow: 0 2px 8px rgba(16, 33, 51, .08); }
+.chat-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-message time { display: block; margin-top: 4px; color: var(--mm-muted); font-size: .7rem; text-align: right; }
+.chat-page__form input { flex: 1; min-height: 48px; padding: 0 14px; border: 1px solid var(--mm-outline); border-radius: 12px; font: inherit; }
+.chat-page__form button { min-height: 48px; padding: 0 18px; color: var(--mm-cream); background: var(--mm-red); border: 0; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 768px) {
+  .chat-page { min-height: calc(100dvh - 170px); }
+  .chat-page__messages { min-height: 280px; padding: 12px; }
+  .chat-page__form { align-items: stretch; }
+  .chat-page__form button { padding: 0 12px; font-size: .75rem; }
+}
+
 .auth-page {
   width: min(100%, 560px);
 }
