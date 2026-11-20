@@ -4,7 +4,7 @@ import { normalizeEmail, normalizeUsername } from './auth-schemas';
 type TokenPayload = { access_token: string; refresh_token: string };
 type ApiError = { detail?: string };
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
 const TOKENS_STORAGE_KEY = 'matchmaker:v1:tokens';
 
 function readTokens(): TokenPayload | null {
@@ -16,6 +16,15 @@ function readTokens(): TokenPayload | null {
   } catch (error) {
     throw new AuthError('storage_unavailable', 'Локальное хранилище недоступно', error);
   }
+}
+
+/**
+ * Returns the current bearer token for authenticated API requests outside the
+ * auth flow. Keeping the storage format here prevents feature clients from
+ * depending on the localStorage key directly.
+ */
+export function getApiAccessToken(): string | null {
+  return readTokens()?.access_token ?? null;
 }
 
 function writeTokens(tokens: TokenPayload | null) {

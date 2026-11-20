@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Accordion } from '../../shared/ui/Accordion';
+import { getProjects, type CatalogProject } from './projects-api';
 
 type CatalogMode = 'specialists' | 'projects';
 
@@ -109,6 +110,31 @@ export function CatalogPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [projects, setProjects] = useState<CatalogProject[]>([]);
+  const [projectsState, setProjectsState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [projectsError, setProjectsError] = useState('');
+  const [projectsRequest, setProjectsRequest] = useState(0);
+
+  useEffect(() => {
+    if (mode !== 'projects') return;
+
+    const controller = new AbortController();
+    setProjectsState('loading');
+    setProjectsError('');
+
+    getProjects(controller.signal)
+      .then((nextProjects) => {
+        setProjects(nextProjects);
+        setProjectsState('ready');
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setProjectsState('error');
+        setProjectsError(error instanceof Error ? error.message : 'Не удалось загрузить проекты.');
+      });
+
+    return () => controller.abort();
+  }, [mode, projectsRequest]);
 
   const toggleSelected = (value: string, selected: string[], setSelected: (next: string[]) => void) => {
     setSelected(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
@@ -120,9 +146,7 @@ export function CatalogPage() {
     return roleMatches && skillMatches;
   };
 
-  const hasMatchingCard = mode === 'specialists'
-    ? matchesFilters('Backend-разработчик', ['Python', 'Django', 'SQL'])
-    : matchesFilters('UI/UX-дизайнер', ['Figma', 'UX', 'UI']);
+  const hasMatchingSpecialist = matchesFilters('Backend-разработчик', ['Python', 'Django', 'SQL']);
 
   const filterControls = (
     <>
@@ -203,9 +227,30 @@ export function CatalogPage() {
             </button>
           </div>
 
-          {hasMatchingCard ? (mode === 'specialists' ? <SpecialistCard /> : <ProjectCard />) : (
+          {mode === 'specialists' && (hasMatchingSpecialist ? <SpecialistCard /> : (
             <p className="catalog-results__empty">По выбранным фильтрам ничего не найдено.</p>
+          ))}
+
+          {mode === 'projects' && projectsState === 'loading' && (
+            <p className="catalog-results__empty" role="status">Загружаем проекты…</p>
           )}
+
+          {mode === 'projects' && projectsState === 'error' && (
+            <div className="catalog-results__empty" role="alert">
+              <p>Не удалось загрузить каталог: {projectsError}</p>
+              <button className="button button-primary" type="button" onClick={() => setProjectsRequest((request) => request + 1)}>
+                Повторить
+              </button>
+            </div>
+          )}
+
+          {mode === 'projects' && projectsState === 'ready' && projects.length === 0 && (
+            <p className="catalog-results__empty">В каталоге пока нет проектов.</p>
+          )}
+
+          {mode === 'projects' && projectsState === 'ready' && projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
         </div>
       </div>
     </section>
@@ -249,27 +294,27 @@ function SpecialistCard() {
   );
 }
 
-function ProjectCard() {
+function ProjectCard({ project }: { project: CatalogProject }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   return (
     <article className="catalog-card catalog-card--project">
       <div className="catalog-card__cover catalog-card__cover--project">
-        <strong>TeamFlow</strong>
-        <span>Сервис для студенческих команд</span>
+        <strong>{project.title}</strong>
+        <span>{project.status === 'open' ? 'Открыт для участников' : `Статус: ${project.status}`}</span>
       </div>
       <div className="catalog-card__title-row">
-        <h3>TeamFlow</h3>
+        <h3>{project.title}</h3>
         <button className={`catalog-card__bookmark${isSaved ? ' is-saved' : ''}`} type="button" aria-label={isSaved ? 'Убрать из избранного' : 'Сохранить в избранное'} aria-pressed={isSaved} onClick={() => setIsSaved((saved) => !saved)}>
           <BookmarkIcon filled={isSaved} />
         </button>
       </div>
-      <p className="catalog-card__role">Ищем UI/UX-дизайнера</p>
+      <p className="catalog-card__role">{project.role_ids.length ? `Ищем специалистов: ${project.role_ids.map((roleId) => `роль #${roleId}`).join(', ')}` : 'Ищем участников в команду'}</p>
       <div className="catalog-card__chips">
-        <span>Figma</span><span>UX</span><span>UI</span>
+        {project.skills.length ? project.skills.map((skill) => <span key={skill.skill_id}>Навык #{skill.skill_id}</span>) : <span>Навыки не указаны</span>}
       </div>
-      <p className="catalog-card__description">Создаём планировщик задач. Нужна помощь с интерфейсом и прототипом.</p>
+      <p className="catalog-card__description">{project.description || 'Описание проекта пока не добавлено.'}</p>
       <Accordion
         className="catalog-card__accordion"
         title="Описание проекта"
@@ -277,8 +322,8 @@ function ProjectCard() {
         onToggle={() => setIsExpanded((isOpen) => !isOpen)}
       >
         <div className="catalog-card__accordion-details">
-          <p><strong>Задача:</strong> собрать удобный планировщик задач для студенческих команд.</p>
-          <p><strong>Формат:</strong> совместная работа и регулярные созвоны.</p>
+          <p><strong>Статус:</strong> {project.status}</p>
+          <p><strong>Дата создания:</strong> {new Date(project.created_at).toLocaleDateString('ru-RU')}</p>
         </div>
       </Accordion>
       <CatalogActions />
