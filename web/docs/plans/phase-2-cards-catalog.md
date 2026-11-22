@@ -15,6 +15,7 @@
 - Public cards come only from API responses; no production mock cards.
 - `Find Projects` requires a published developer profile.
 - `Find Developers` requires an owned project; if the project exists, show its summary/manage state instead of create-project action.
+- Show only the catalog supported by the user's completed card when they have one card type; show the catalog tabs only after both profile and project cards are complete.
 - No second-project button is rendered; handle defensive API `409` for stale/direct requests.
 - Profile/project card publication is separate from the current discovery mode.
 - Use loading, error, empty and retry states for every catalog request.
@@ -22,7 +23,7 @@
 ## Review Focus
 
 - `next_setup=none` routes completed accounts to the main page.
-- Missing developer/project card disables only the dependent discovery mode.
+- With only a completed developer profile, show Projects without a catalog switcher; with only a completed project, show Specialists without a switcher; show both tabs when both cards are complete.
 - A user cannot accidentally send project-owner actions while browsing projects.
 - A second project is not offered by UI and stale `409` is rendered safely.
 - Pagination/filter changes do not resurrect hardcoded cards.

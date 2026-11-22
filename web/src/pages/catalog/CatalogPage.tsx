@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Accordion } from '../../shared/ui/Accordion';
 import { getProjects, type CatalogProject } from './projects-api';
+import { getCatalogOnboarding, type CatalogOnboarding } from './onboarding-api';
 
 type CatalogMode = 'specialists' | 'projects';
 
@@ -105,7 +106,11 @@ function MultiSelectFilter({
 }
 
 export function CatalogPage() {
-  const [mode, setMode] = useState<CatalogMode>('specialists');
+  const [selectedMode, setSelectedMode] = useState<CatalogMode>('specialists');
+  const [onboarding, setOnboarding] = useState<CatalogOnboarding | null>(null);
+  const [onboardingState, setOnboardingState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [onboardingError, setOnboardingError] = useState('');
+  const [onboardingRequest, setOnboardingRequest] = useState(0);
   const [openFilters, setOpenFilters] = useState({ roles: false, skills: false, advanced: false });
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -114,6 +119,37 @@ export function CatalogPage() {
   const [projectsState, setProjectsState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [projectsError, setProjectsError] = useState('');
   const [projectsRequest, setProjectsRequest] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setOnboardingState('loading');
+    setOnboardingError('');
+
+    getCatalogOnboarding(controller.signal)
+      .then((nextOnboarding) => {
+        setOnboarding(nextOnboarding);
+        setSelectedMode(nextOnboarding.mode === 'developer' ? 'projects' : 'specialists');
+        setOnboardingState('ready');
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setOnboardingState('error');
+        setOnboardingError(error instanceof Error ? error.message : 'Не удалось загрузить состояние карточек.');
+      });
+
+    return () => controller.abort();
+  }, [onboardingRequest]);
+
+  const hasProfile = onboarding?.profile.complete ?? false;
+  const hasProject = onboarding?.project.complete ?? false;
+  const showSwitcher = hasProfile && hasProject;
+  const mode: CatalogMode | null = showSwitcher
+    ? selectedMode
+    : hasProfile
+      ? 'projects'
+      : hasProject
+        ? 'specialists'
+        : null;
 
   useEffect(() => {
     if (mode !== 'projects') return;
@@ -206,36 +242,50 @@ export function CatalogPage() {
 
         <div className="catalog-results">
           <h2>Подходят тебе</h2>
-          <div className="catalog-switcher" role="tablist" aria-label="Тип каталога">
-            <button
-              className={mode === 'projects' ? 'catalog-switcher__tab catalog-switcher__tab--active' : 'catalog-switcher__tab'}
-              type="button"
-              role="tab"
-              aria-selected={mode === 'projects'}
-              onClick={() => setMode('projects')}
-            >
-              Проекты
-            </button>
-            <button
-              className={mode === 'specialists' ? 'catalog-switcher__tab catalog-switcher__tab--active' : 'catalog-switcher__tab'}
-              type="button"
-              role="tab"
-              aria-selected={mode === 'specialists'}
-              onClick={() => setMode('specialists')}
-            >
-              Специалисты
-            </button>
-          </div>
+          {onboardingState === 'loading' && <p className="catalog-results__empty" role="status">Загружаем каталог…</p>}
+          {onboardingState === 'error' && (
+            <div className="catalog-results__empty" role="alert">
+              <p>Не удалось определить доступный каталог: {onboardingError}</p>
+              <button className="button button-primary" type="button" onClick={() => setOnboardingRequest((request) => request + 1)}>
+                Повторить
+              </button>
+            </div>
+          )}
+          {onboardingState === 'ready' && mode === null && (
+            <p className="catalog-results__empty" role="status">Заполните профиль специалиста или карточку проекта, чтобы открыть каталог.</p>
+          )}
+          {onboardingState === 'ready' && showSwitcher && (
+            <div className="catalog-switcher" role="tablist" aria-label="Тип каталога">
+              <button
+                className={mode === 'projects' ? 'catalog-switcher__tab catalog-switcher__tab--active' : 'catalog-switcher__tab'}
+                type="button"
+                role="tab"
+                aria-selected={mode === 'projects'}
+                onClick={() => setSelectedMode('projects')}
+              >
+                Проекты
+              </button>
+              <button
+                className={mode === 'specialists' ? 'catalog-switcher__tab catalog-switcher__tab--active' : 'catalog-switcher__tab'}
+                type="button"
+                role="tab"
+                aria-selected={mode === 'specialists'}
+                onClick={() => setSelectedMode('specialists')}
+              >
+                Специалисты
+              </button>
+            </div>
+          )}
 
-          {mode === 'specialists' && (hasMatchingSpecialist ? <SpecialistCard /> : (
+          {onboardingState === 'ready' && mode === 'specialists' && (hasMatchingSpecialist ? <SpecialistCard /> : (
             <p className="catalog-results__empty">По выбранным фильтрам ничего не найдено.</p>
           ))}
 
-          {mode === 'projects' && projectsState === 'loading' && (
+          {onboardingState === 'ready' && mode === 'projects' && projectsState === 'loading' && (
             <p className="catalog-results__empty" role="status">Загружаем проекты…</p>
           )}
 
-          {mode === 'projects' && projectsState === 'error' && (
+          {onboardingState === 'ready' && mode === 'projects' && projectsState === 'error' && (
             <div className="catalog-results__empty" role="alert">
               <p>Не удалось загрузить каталог: {projectsError}</p>
               <button className="button button-primary" type="button" onClick={() => setProjectsRequest((request) => request + 1)}>
@@ -244,11 +294,11 @@ export function CatalogPage() {
             </div>
           )}
 
-          {mode === 'projects' && projectsState === 'ready' && projects.length === 0 && (
+          {onboardingState === 'ready' && mode === 'projects' && projectsState === 'ready' && projects.length === 0 && (
             <p className="catalog-results__empty">В каталоге пока нет проектов.</p>
           )}
 
-          {mode === 'projects' && projectsState === 'ready' && projects.map((project) => (
+          {onboardingState === 'ready' && mode === 'projects' && projectsState === 'ready' && projects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>
