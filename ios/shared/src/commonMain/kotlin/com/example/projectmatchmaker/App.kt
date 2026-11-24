@@ -25,6 +25,7 @@ import com.example.projectmatchmaker.network.ProjectSkillDto
 import com.example.projectmatchmaker.network.ProjectDto
 import com.example.projectmatchmaker.network.SkillLevelDto
 import com.example.projectmatchmaker.network.MatchDto
+import com.example.projectmatchmaker.network.ApiException
 
 private const val DEFAULT_USE_BACKEND = true
 
@@ -175,12 +176,16 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 skills = item.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
             )
         }
-        favorites = (people + projects).toSet()
+        favorites = (people + projects).toSet() + favorites.filter { it.id.startsWith("demo:") }
     }
 
     fun toggleFavorite(item: FavoriteItem) {
-        val targetId = item.id.toIntOrNull() ?: return
         val saved = item !in favorites
+        if (item.id.startsWith("demo:")) {
+            favorites = if (saved) favorites + item else favorites - item
+            return
+        }
+        val targetId = item.id.toIntOrNull() ?: return
         coroutineScope.launch {
             runCatching {
                 cardsApi?.setFavorite(if (item.type == FavoriteType.PERSON) "profile" else "project", targetId, saved)
@@ -260,29 +265,54 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 catalogLoading = true
                 catalogError = null
                 backendError = null
-                runCatching {
-                    val owned = cardsApi.projects(mine = true).firstOrNull()
-                    ownedProjectId = owned?.id
-                    val projects = if (developerCardComplete) cardsApi.recommendedProjects() else emptyList()
-                    val candidates = if (projectCardComplete) owned?.let { cardsApi.recommendedCandidates(it.id) }.orEmpty() else emptyList()
-                    projects to candidates
-                }.onSuccess { (projects, candidates) ->
-                    catalogProjects = projects.map { item ->
-                        CatalogProjectItem(
-                            title = item.project.title,
-                            description = item.project.description,
-                            role = item.project.roleIds.firstOrNull()?.let { id -> roleCatalog.firstOrNull { it.id == id }?.name } ?: "Ищем участников",
-                            skills = item.project.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
-                            score = (item.score * 100).toInt(),
-                            id = item.project.id,
-                            workFormat = item.project.workFormat.toCatalogWorkFormat(),
-                        )
+                val errors = mutableListOf<Throwable>()
+                var ownedId = ownedProjectId
+                runCatching { cardsApi.projects(mine = true).firstOrNull() }
+                    .onSuccess { owned ->
+                        ownedId = owned?.id
+                        ownedProjectId = ownedId
                     }
-                    catalogPeople = candidates.map { it.toCatalogPerson(roleCatalog, skillCatalog) }
-                }.onFailure {
-                    catalogError = it.message ?: "Не удалось загрузить каталог"
-                    backendError = catalogError
+                    .onFailure { errors += it }
+
+                if (developerCardComplete) {
+                    runCatching { cardsApi.recommendedProjects() }
+                        .onSuccess { projects -> catalogProjects = projects.map { item ->
+                            CatalogProjectItem(
+                                title = item.project.title,
+                                description = item.project.description,
+                                role = item.project.roleIds.firstOrNull()?.let { id -> roleCatalog.firstOrNull { it.id == id }?.name } ?: "Ищем участников",
+                                skills = item.project.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
+                                score = (item.score * 100).toInt(),
+                                id = item.project.id,
+                                workFormat = item.project.workFormat.toCatalogWorkFormat(),
+                            )
+                        } }
+                        .onFailure { errors += it }
+                } else catalogProjects = emptyList()
+
+                if (projectCardComplete && ownedId != null) {
+                    runCatching { cardsApi.recommendedCandidates(ownedId) }
+                        .onSuccess { candidates -> catalogPeople = candidates.map { it.toCatalogPerson(roleCatalog, skillCatalog) } }
+                        .onFailure { errors += it }
+                } else if (!projectCardComplete || ownedId == null) catalogPeople = emptyList()
+
+                val unauthorized = errors.any { (it as? ApiException)?.statusCode == 401 }
+                if (unauthorized) {
+                    val refreshed = authRepository.refreshSession().isSuccess
+                    if (refreshed) {
+                        catalogLoading = false
+                        catalogReloadKey += 1
+                        return@LaunchedEffect
+                    }
+                    authRepository.logout()
+                    backendError = "Сессия истекла. Войдите снова, чтобы загрузить каталог."
+                    catalogError = backendError
+                    catalogLoading = false
+                    screen = AppScreen.LOGIN
+                    return@LaunchedEffect
                 }
+                catalogError = errors.mapNotNull { it.message?.takeIf(String::isNotBlank) }.distinct().joinToString("\n").ifBlank { null }
+                backendError = catalogError
                 catalogLoading = false
             }
             if (screen == AppScreen.PROFILE || screen == AppScreen.CATALOG || screen == AppScreen.MATCHES) {

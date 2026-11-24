@@ -141,5 +141,5 @@ class AuthApi(
     }
 }
 
-class ApiException(message: String) : Exception(message)
+class ApiException(message: String, val statusCode: Int? = null) : Exception(message)
 

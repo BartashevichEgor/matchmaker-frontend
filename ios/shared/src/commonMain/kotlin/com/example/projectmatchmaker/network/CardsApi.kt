@@ -180,6 +180,6 @@ class CardsApi(
         val detail = runCatching {
             json.parseToJsonElement(bodyAsText()).jsonObject["detail"]?.jsonPrimitive?.contentOrNull
         }.getOrNull()
-        throw ApiException(detail ?: "Ошибка сервера (${status.value})")
+        throw ApiException(detail ?: "Ошибка сервера (${status.value})", status.value)
     }
 }

@@ -107,8 +107,11 @@ fun CatalogScreen(
     var showFilters by remember { mutableStateOf(false) }
     var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
     var draftFilter by remember { mutableStateOf(CatalogFilter()) }
-    val availableProjects = projects.ifEmpty { if (backendEnabled) emptyList() else demoProjects }
-    val availablePeople = people.ifEmpty { if (backendEnabled) emptyList() else demoPeople }
+    var showExamples by remember { mutableStateOf(false) }
+    val hasBackendCards = projects.isNotEmpty() || people.isNotEmpty()
+    val demoMode = showExamples || (!backendEnabled && !hasBackendCards)
+    val availableProjects = if (demoMode) demoProjects else projects
+    val availablePeople = if (demoMode) demoPeople else people
     val filteredProjects = availableProjects.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
@@ -180,10 +183,28 @@ fun CatalogScreen(
                     if (isLoading) {
                         Text("Загружаем карточки…", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
                     } else if (errorMessage != null) {
-                        Text("Не удалось обновить каталог. Пока можно посмотреть примеры.", color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text(errorMessage, color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                         PrimaryButton("Повторить загрузку", onRetry)
                     }
-                    if (!isLoading && noVisibleCard) {
+                    if (backendEnabled && !demoMode && noVisibleCard && !isLoading) {
+                        Text(
+                            if (errorMessage != null) "Пока можно открыть примеры и проверить фильтры." else "Пока нет опубликованных анкет для этого режима.",
+                            color = MutedTextColor,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 8.dp),
+                        )
+                        PrimaryButton("Посмотреть примеры", onClick = {
+                            showExamples = true
+                            cardIndex = 0
+                            appliedFilter = CatalogFilter()
+                            draftFilter = CatalogFilter()
+                        })
+                    }
+                    if (demoMode) {
+                        Text("Демо-примеры · фильтры и закладки работают локально", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text("Чтобы загрузить реальные анкеты, повторите запрос после восстановления соединения.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    if (!isLoading && noVisibleCard && !(backendEnabled && !demoMode)) {
                         val hasFilters = appliedFilter != CatalogFilter()
                         Text(
                             if (hasFilters) "По выбранным фильтрам ничего не найдено." else "Карточки закончились. Можно начать просмотр заново.",
@@ -216,14 +237,14 @@ fun CatalogScreen(
                     SwipeActions(
                         enabled = !isLoading && !noVisibleCard,
                         onPass = {
-                            if (backendEnabled) {
+                            if (backendEnabled && !demoMode) {
                                 if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "pass") }
                                 else visiblePerson?.id?.let { onSwipePerson(it, "pass") }
                             }
                             cardIndex += 1
                         },
                         onLike = {
-                            if (backendEnabled) {
+                            if (backendEnabled && !demoMode) {
                                 if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "like") }
                                 else visiblePerson?.id?.let { onSwipePerson(it, "like") }
                             }
