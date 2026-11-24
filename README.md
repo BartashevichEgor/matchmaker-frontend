@@ -6,6 +6,8 @@ React-клиент учебного проекта **Matchmaker** — серви
 
 React 18, TypeScript, Vite, React Router, Zod, Vitest и React Testing Library. Адаптивная верстка реализована средствами CSS/Flexbox.
 
+Мобильный клиент находится отдельно в `ios/`: Kotlin Multiplatform, Compose Multiplatform и Ktor Client.
+
 ## Готовые пользовательские экраны
 
 - вход;
@@ -30,3 +32,19 @@ npm run dev
 По умолчанию `VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1`. Для доступа к серверу на другом компьютере укажите в `.env` опубликованный HTTPS-адрес API с суффиксом `/api/v1`, затем перезапустите Vite.
 
 Подробности запуска и проверки находятся в [web/README.md](web/README.md).
+
+## Мобильное приложение
+
+Android и iOS используют общий интерфейс из `ios/shared`. Широкие экраны (от 600 dp) получают планшетные отступы, узкие — телефонную раскладку.
+
+1. Откройте папку `ios` в Android Studio и дождитесь синхронизации Gradle.
+2. Запустите конфигурацию `androidApp` на телефоне или эмуляторе.
+3. Для Android-эмулятора API на компьютере доступен по адресу `http://10.0.2.2:8000`; для физического телефона укажите адрес компьютера в `ios/shared/src/androidMain/kotlin/com/example/projectmatchmaker/network/ApiConfig.android.kt`.
+
+Собрать APK можно командой из папки `ios`:
+
+```bash
+./gradlew :androidApp:assembleDebug
+```
+
+Переписки используют отдельный чат-сервис на порту `3000`; он должен быть запущен вместе с backend.
