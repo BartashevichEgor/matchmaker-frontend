@@ -44,13 +44,34 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.projectmatchmaker.network.ChatApi
+import com.example.projectmatchmaker.network.ChatCandidateSummaryDto
 import com.example.projectmatchmaker.network.ChatConversationDto
 import com.example.projectmatchmaker.network.ChatMessageDto
+import com.example.projectmatchmaker.network.ChatProjectSummaryDto
+import com.example.projectmatchmaker.network.ApiException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+
+private const val DEMO_CONVERSATION_ID = "demo:codegarden"
+private const val DEMO_CANDIDATE_ID = 9201
+private const val DEMO_OWNER_ID = 9200
+
+private val demoConversation = ChatConversationDto(
+    id = DEMO_CONVERSATION_ID,
+    matchId = -1,
+    createdAt = "2026-11-25T09:30:00Z",
+    project = ChatProjectSummaryDto(id = -1, title = "CodeGarden", ownerId = DEMO_OWNER_ID),
+    candidate = ChatCandidateSummaryDto(userId = DEMO_CANDIDATE_ID, displayName = "Мария Волкова", headline = "UI/UX-дизайнер"),
+    unreadCount = 1,
+)
+
+private val demoChatSeed = listOf(
+    ChatMessageDto("demo-message-1", DEMO_CONVERSATION_ID, DEMO_CANDIDATE_ID, "demo-seed-1", "Привет! Увидела ваш проект в каталоге. Ищете дизайнера?", "2026-11-25T09:30:00Z"),
+    ChatMessageDto("demo-message-2", DEMO_CONVERSATION_ID, DEMO_OWNER_ID, "demo-seed-2", "Да, будем рады познакомиться и рассказать подробнее.", "2026-11-25T09:32:00Z"),
+)
 
 @Composable
 fun ChatsScreen(
@@ -60,6 +81,10 @@ fun ChatsScreen(
     api: ChatApi? = null,
     accessToken: String? = null,
     currentUserId: Int? = null,
+    initialDemoChatRequest: Int = 0,
+    demoMessages: List<ChatMessageDto> = emptyList(),
+    onDemoMessagesChange: (List<ChatMessageDto>) -> Unit = {},
+    onSessionUnauthorized: () -> Unit = {},
 ) {
     var conversations by remember { mutableStateOf(emptyList<ChatConversationDto>()) }
     var messages by remember { mutableStateOf(emptyList<ChatMessageDto>()) }
@@ -70,8 +95,21 @@ fun ChatsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var connection by remember { mutableStateOf("Подключаемся…") }
     var reload by remember { mutableStateOf(0) }
+    val sampleMessages = demoMessages.ifEmpty { demoChatSeed }
     val scope = rememberCoroutineScope()
     val messageListState = rememberLazyListState()
+
+    fun openDemoChat() {
+        selected = demoConversation.copy(lastMessage = sampleMessages.lastOrNull())
+        messages = sampleMessages
+        connection = "Пример чата"
+        error = null
+        draft = ""
+    }
+
+    LaunchedEffect(initialDemoChatRequest) {
+        if (initialDemoChatRequest > 0) openDemoChat()
+    }
 
     LaunchedEffect(api, accessToken, reload) {
         if (api == null || accessToken.isNullOrBlank()) {
@@ -83,12 +121,22 @@ fun ChatsScreen(
         error = null
         runCatching { api.conversations() }
             .onSuccess { conversations = it.sortedByDescending { chat -> chat.lastMessage?.createdAt ?: chat.createdAt } }
-            .onFailure { error = it.toChatMessage("Не удалось загрузить список чатов") }
+            .onFailure {
+                error = it.toChatMessage("Не удалось загрузить список чатов")
+                if ((it as? ApiException)?.statusCode == 401) onSessionUnauthorized()
+            }
         loading = false
     }
 
     LaunchedEffect(api, accessToken, selected?.id, reload) {
         val conversation = selected ?: return@LaunchedEffect
+        if (conversation.id == DEMO_CONVERSATION_ID) {
+            messages = sampleMessages
+            loading = false
+            error = null
+            connection = "Пример чата"
+            return@LaunchedEffect
+        }
         val chatApi = api ?: return@LaunchedEffect
         if (accessToken.isNullOrBlank()) return@LaunchedEffect
         messages = emptyList()
@@ -99,12 +147,16 @@ fun ChatsScreen(
                 runCatching { chatApi.markRead(conversation.id) }
                 conversations = conversations.map { if (it.id == conversation.id) it.copy(unreadCount = 0) else it }
             }
-            .onFailure { error = it.toChatMessage("Не удалось загрузить переписку") }
+            .onFailure {
+                error = it.toChatMessage("Не удалось загрузить переписку")
+                if ((it as? ApiException)?.statusCode == 401) onSessionUnauthorized()
+            }
         loading = false
     }
 
     LaunchedEffect(api, accessToken, selected?.matchId) {
         val conversation = selected ?: return@LaunchedEffect
+        if (conversation.id == DEMO_CONVERSATION_ID) return@LaunchedEffect
         val chatApi = api ?: return@LaunchedEffect
         val token = accessToken?.takeIf(String::isNotBlank) ?: return@LaunchedEffect
         var retryDelay = 1_000L
@@ -133,8 +185,25 @@ fun ChatsScreen(
 
     fun sendMessage(conversation: ChatConversationDto) {
         val body = draft.trim()
-        val chatApi = api ?: return
         if (body.isEmpty() || sending) return
+        if (conversation.id == DEMO_CONVERSATION_ID) {
+            val timestamp = "2026-11-25T09:${(34 + sampleMessages.size).toString().padStart(2, '0')}:00Z"
+            val sent = ChatMessageDto(
+                id = "demo-message-${Random.nextLong().toULong()}",
+                conversationId = DEMO_CONVERSATION_ID,
+                senderUserId = currentUserId ?: DEMO_OWNER_ID,
+                clientMessageId = "demo-client-${Random.nextLong().toULong()}",
+                body = body,
+                createdAt = timestamp,
+            )
+            val updatedMessages = sampleMessages + sent
+            onDemoMessagesChange(updatedMessages)
+            messages = updatedMessages
+            conversations = conversations.map { if (it.id == DEMO_CONVERSATION_ID) it.copy(lastMessage = sent) else it }
+            draft = ""
+            return
+        }
+        val chatApi = api ?: return
         sending = true
         scope.launch {
             runCatching { chatApi.sendMessage(conversation.id, "mobile-${Random.nextLong().toULong()}", body) }
@@ -161,8 +230,26 @@ fun ChatsScreen(
                             error != null -> {
                                 Text(error.orEmpty(), color = ErrorColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
                                 PrimaryButton("Повторить", onClick = { reload += 1 })
+                                Text("Пока сервис недоступен, можно открыть пример и попробовать интерфейс.", color = MutedTextColor, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
+                                ConversationRow(
+                                    demoConversation.copy(lastMessage = sampleMessages.lastOrNull(), unreadCount = 1),
+                                    currentUserId,
+                                    isDemo = true,
+                                    onClick = ::openDemoChat,
+                                )
                             }
-                            conversations.isEmpty() -> Text("Пока нет чатов. Они появятся после взаимного мэтча.", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(vertical = 24.dp))
+                            conversations.isEmpty() -> {
+                                Column(Modifier.fillMaxWidth()) {
+                                    Text("Пока нет чатов. Они появятся после взаимного мэтча.", color = MutedTextColor, fontSize = 14.sp, modifier = Modifier.padding(vertical = 12.dp))
+                                    Text("Пример переписки", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 6.dp))
+                                    ConversationRow(
+                                        demoConversation.copy(lastMessage = sampleMessages.lastOrNull(), unreadCount = 1),
+                                        currentUserId,
+                                        isDemo = true,
+                                        onClick = ::openDemoChat,
+                                    )
+                                }
+                            }
                             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
                                 items(conversations, key = ChatConversationDto::id) { conversation ->
                                     ConversationRow(conversation, currentUserId) { selected = conversation }
@@ -177,7 +264,7 @@ fun ChatsScreen(
                             Text("‹", color = PrimaryButtonColor, fontSize = 34.sp, modifier = Modifier.clickable {
                                 selected = null
                                 error = null
-                                reload += 1
+                                if (conversation.id != DEMO_CONVERSATION_ID) reload += 1
                             }.padding(end = 12.dp))
                             val peer = peerName(conversation, currentUserId)
                             Avatar(peer.initials)
@@ -188,6 +275,14 @@ fun ChatsScreen(
                         }
                         Spacer(Modifier.height(10.dp))
                         SurfaceDivider()
+                        if (conversation.id == DEMO_CONVERSATION_ID) {
+                            Text(
+                                "Демо-чат · сообщения сохраняются только в этом примере",
+                                color = MutedTextColor,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(vertical = 7.dp),
+                            )
+                        }
                         if (error != null) {
                             Text(error.orEmpty(), color = ErrorColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 14.dp))
                             if (messages.isEmpty()) PrimaryButton("Повторить", onClick = { reload += 1 })
@@ -203,8 +298,9 @@ fun ChatsScreen(
                             } else if (messages.isEmpty()) {
                                 item { Text("Начните переписку", color = MutedTextColor, modifier = Modifier.padding(12.dp)) }
                             }
+                            val messageOwnerId = currentUserId ?: if (conversation.id == DEMO_CONVERSATION_ID) DEMO_OWNER_ID else -1
                             items(messages, key = ChatMessageDto::id) { message ->
-                                MessageBubble(message.body, message.createdAt, message.senderUserId == currentUserId)
+                                MessageBubble(message.body, message.createdAt, message.senderUserId == messageOwnerId)
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -220,7 +316,7 @@ fun ChatsScreen(
                             )
                             Spacer(Modifier.width(6.dp))
                             IconButton(
-                                enabled = draft.isNotBlank() && !sending && api != null,
+                                enabled = draft.isNotBlank() && !sending && (api != null || conversation.id == DEMO_CONVERSATION_ID),
                                 onClick = { sendMessage(conversation) },
                                 modifier = Modifier.size(48.dp).background(PrimaryButtonColor, CircleShape),
                             ) { Text("➤", color = CardBgColor, fontSize = 20.sp) }
@@ -259,7 +355,7 @@ private fun peerName(conversation: ChatConversationDto, currentUserId: Int?): Pe
 private fun String.initials(): String = trim().split(Regex("\\s+")).filter(String::isNotBlank).take(2).joinToString("") { it.first().uppercase() }.ifBlank { "MM" }
 
 @Composable
-private fun ConversationRow(conversation: ChatConversationDto, currentUserId: Int?, onClick: () -> Unit) {
+private fun ConversationRow(conversation: ChatConversationDto, currentUserId: Int?, isDemo: Boolean = false, onClick: () -> Unit) {
     val peer = peerName(conversation, currentUserId)
     Surface(color = PanelBgColor, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -270,6 +366,7 @@ private fun ConversationRow(conversation: ChatConversationDto, currentUserId: In
                     Text(conversation.lastMessage?.createdAt?.substringAfter('T')?.take(5).orEmpty(), color = MutedTextColor, fontSize = 10.sp)
                 }
                 Text(conversation.lastMessage?.body ?: "Совпадение создано — напишите первым", color = MutedTextColor, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                if (isDemo) Text("Пример · можно написать", color = PrimaryButtonColor, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
             }
             if (conversation.unreadCount > 0) {
                 Surface(color = PrimaryButtonColor, shape = CircleShape, modifier = Modifier.padding(start = 8.dp)) {

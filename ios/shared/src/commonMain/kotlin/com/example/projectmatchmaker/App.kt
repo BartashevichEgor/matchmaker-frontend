@@ -26,6 +26,7 @@ import com.example.projectmatchmaker.network.ProjectDto
 import com.example.projectmatchmaker.network.SkillLevelDto
 import com.example.projectmatchmaker.network.MatchDto
 import com.example.projectmatchmaker.network.ApiException
+import com.example.projectmatchmaker.network.ChatMessageDto
 
 private const val DEFAULT_USE_BACKEND = true
 
@@ -127,6 +128,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var sessionRevision by remember { mutableStateOf(0) }
     var matchReloadKey by remember { mutableStateOf(0) }
     var matchItems by remember { mutableStateOf<List<MatchDto>?>(null) }
+    var demoChatRequest by remember { mutableStateOf(0) }
+    var demoChatMessages by remember { mutableStateOf(emptyList<ChatMessageDto>()) }
     var incomingLikeAccepted by remember { mutableStateOf(false) }
     var incomingLikeDismissed by remember { mutableStateOf(false) }
     var roleCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
@@ -215,9 +218,19 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             // A still-valid saved session restores the profile as soon as the app opens.
             // Keep locally saved optional fields that are not part of the current API yet.
             if (authRepository?.hasSavedSession() == true) {
-                runCatching { refreshFavorites(cardsApi) }
                 val cachedProfile = profile
-                val onboarding = runCatching { cardsApi.onboarding() }.getOrNull()
+                var onboardingResult = runCatching { cardsApi.onboarding() }
+                if ((onboardingResult.exceptionOrNull() as? ApiException)?.statusCode == 401) {
+                    if (authRepository.refreshSession().isSuccess) {
+                        onboardingResult = runCatching { cardsApi.onboarding() }
+                    } else {
+                        authRepository.logout()
+                        backendError = "Сессия истекла. Войдите снова, чтобы открыть сохранённый профиль."
+                        screen = AppScreen.LOGIN
+                        return@LaunchedEffect
+                    }
+                }
+                val onboarding = onboardingResult.getOrNull()
                 onboarding?.let { state ->
                     onboardingMode = state.mode
                     profile = profile.copy(registrationMode = state.mode)
@@ -247,6 +260,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                     // If the API is temporarily offline, retain a complete cached profile.
                     if (profile.isReadyForMainApp()) screen = AppScreen.CATALOG
                 }
+                runCatching { refreshFavorites(cardsApi) }
                 screen = if (onboarding == null) {
                     if (profile.isReadyForMainApp()) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
                 } else when (nextSetup) {
@@ -338,6 +352,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     val openCatalog = { screen = AppScreen.CATALOG }
     val openMatches = { screen = AppScreen.MATCHES }
     val openChats = { screen = AppScreen.CHATS }
+    val openDemoChat = { demoChatRequest += 1; screen = AppScreen.CHATS }
     val openProfile = {
         screen = if (profileIsReady) AppScreen.PROFILE else AppScreen.CREATE_PROFILE
     }
@@ -361,7 +376,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                 profile = profile.copy(registrationMode = state.mode)
                                 if (state.profile.exists) {
                                     val remote = cardsApi.myProfile()
-                                    profile = remote.toProfile(roleCatalog, skillCatalog, email.trim()).copy(registrationMode = state.mode)
+                                    profile = remote.toProfile(roleCatalog, skillCatalog, email.trim()).copy(
+                                        registrationMode = state.mode,
+                                        photoBase64 = profile.photoBase64,
+                                        education = profile.education,
+                                        courses = profile.courses,
+                                    )
                                 }
                                 val owned = cardsApi.projects(mine = true).firstOrNull()
                                 ownedProjectId = owned?.id
@@ -638,7 +658,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 incomingLikeDismissed = incomingLikeDismissed,
                 onAcceptIncomingLike = { incomingLikeAccepted = true; incomingLikeDismissed = false },
                 onDismissIncomingLike = { incomingLikeDismissed = true },
-                onOpenIncomingChat = openChats,
+                onOpenIncomingChat = openDemoChat,
+                onOpenDemoChat = openDemoChat,
             )
             AppScreen.CHATS -> ChatsScreen(
                 onCatalog = openCatalog,
@@ -647,6 +668,19 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 api = chatApi,
                 accessToken = TokenStorage.getToken(),
                 currentUserId = profile.backendUserId,
+                initialDemoChatRequest = demoChatRequest,
+                demoMessages = demoChatMessages,
+                onDemoMessagesChange = { demoChatMessages = it },
+                onSessionUnauthorized = {
+                    coroutineScope.launch {
+                        if (authRepository?.refreshSession()?.isSuccess == true) sessionRevision += 1
+                        else {
+                            authRepository?.logout()
+                            backendError = "Сессия истекла. Войдите снова, чтобы открыть чаты."
+                            screen = AppScreen.LOGIN
+                        }
+                    }
+                },
             )
         }
     }

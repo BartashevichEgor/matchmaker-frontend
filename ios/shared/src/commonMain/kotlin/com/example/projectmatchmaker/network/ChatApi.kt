@@ -149,7 +149,7 @@ class ChatApi(
 
     private suspend fun io.ktor.client.statement.HttpResponse.checked(): io.ktor.client.statement.HttpResponse {
         if (status.isSuccess()) return this
-        throw ApiException("Чат-сервис ответил с ошибкой (${status.value}): ${bodyAsText().take(160)}")
+        throw ApiException("Чат-сервис ответил с ошибкой (${status.value}): ${bodyAsText().take(160)}", status.value)
     }
 
     private fun String.encodePathSegment(): String = replace("%", "%25").replace("/", "%2F")
