@@ -32,6 +32,7 @@ fun MatchesScreen(
     onChats: () -> Unit,
     onProfile: () -> Unit,
     backendMatches: List<MatchDto>? = null,
+    backendEnabled: Boolean = false,
     incomingLikeAccepted: Boolean = false,
     incomingLikeDismissed: Boolean = false,
     onAcceptIncomingLike: () -> Unit = {},
@@ -52,23 +53,23 @@ fun MatchesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (!incomingLikeAccepted && !incomingLikeDismissed) {
+                    if (!backendEnabled && !incomingLikeAccepted && !incomingLikeDismissed) {
                         item(key = "incoming-codegarden") {
                             IncomingLikeCard(onAcceptIncomingLike, onDismissIncomingLike)
                         }
                     }
-                    if (incomingLikeAccepted) {
+                    if (!backendEnabled && incomingLikeAccepted) {
                         item(key = "mutual-codegarden") {
                             MatchCard(demoIncomingMatch, onOpenIncomingChat)
                         }
                     }
-                    if (backendMatches == null) {
+                    if (!backendEnabled && backendMatches == null) {
                         items(demoMatches, key = { it.id }) { match -> MatchCard(match, onChats) }
-                    } else if (backendMatches.isEmpty()) {
-                        item { Text("Пока нет взаимных совпадений.", color = MutedTextColor, fontSize = 13.sp) }
                     } else {
-                        items(backendMatches, key = { it.id }) { match ->
-                            BackendMatchCard(match, onChats)
+                        if (backendMatches.isNullOrEmpty()) {
+                            item { Text("Пока нет взаимных совпадений.", color = MutedTextColor, fontSize = 13.sp) }
+                        } else {
+                            items(backendMatches, key = { it.id }) { match -> BackendMatchCard(match, onChats) }
                         }
                     }
                 }

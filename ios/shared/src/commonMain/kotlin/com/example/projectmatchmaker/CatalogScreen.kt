@@ -79,6 +79,8 @@ fun CatalogScreen(
     favorites: Set<FavoriteItem> = emptySet(),
     onFavoriteToggle: (FavoriteItem) -> Unit = {},
     showProjectsInitially: Boolean = false,
+    showProjectsTab: Boolean = true,
+    showPeopleTab: Boolean = true,
     onCatalog: () -> Unit,
     onProfile: () -> Unit,
     onMatches: () -> Unit,
@@ -92,15 +94,21 @@ fun CatalogScreen(
     onSwipeProject: (Int, String) -> Unit = { _, _ -> },
     onSwipePerson: (Int, String) -> Unit = { _, _ -> },
 ) {
-    var tab by remember {
+    var selectedTab by remember(showProjectsInitially) {
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
+    }
+    val canSwitchTabs = showProjectsTab && showPeopleTab
+    val tab = when {
+        showProjectsTab && !showPeopleTab -> CatalogTab.PROJECTS
+        showPeopleTab && !showProjectsTab -> CatalogTab.PEOPLE
+        else -> selectedTab
     }
     var cardIndex by remember { mutableStateOf(0) }
     var showFilters by remember { mutableStateOf(false) }
     var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
     var draftFilter by remember { mutableStateOf(CatalogFilter()) }
-    val availableProjects = projects.ifEmpty { demoProjects }
-    val availablePeople = people.ifEmpty { demoPeople }
+    val availableProjects = projects.ifEmpty { if (backendEnabled) emptyList() else demoProjects }
+    val availablePeople = people.ifEmpty { if (backendEnabled) emptyList() else demoPeople }
     val filteredProjects = availableProjects.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
@@ -150,17 +158,19 @@ fun CatalogScreen(
                         )
                     } else {
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
-                    CatalogTabs(tab) {
-                        tab = it
-                        cardIndex = 0
-                        appliedFilter = CatalogFilter()
-                        draftFilter = CatalogFilter()
+                    if (canSwitchTabs) {
+                        CatalogTabs(tab) {
+                            selectedTab = it
+                            cardIndex = 0
+                            appliedFilter = CatalogFilter()
+                            draftFilter = CatalogFilter()
+                        }
                     }
                     Text(
-                        if (showProjectsInitially) {
-                            "От имени: моя анкета. Специалисты доступны в проектном режиме."
+                        if (tab == CatalogTab.PROJECTS) {
+                            "Подбираем команды для вашей анкеты."
                         } else {
-                            "От имени: мой проект. Проекты доступны в персональном режиме."
+                            "Подбираем специалистов для вашего проекта."
                         },
                         color = MutedTextColor,
                         fontSize = 10.sp,

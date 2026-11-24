@@ -1,8 +1,8 @@
 package com.example.projectmatchmaker.network
 
 /**
- * Для локальной разработки используем ADB reverse (adb reverse tcp:8000 tcp:8000),
- * чтобы эмулятор обращался к backend на компьютере через loopback.
+ * Android-эмулятор видит loopback компьютера через адрес 10.0.2.2.
  */
-actual fun platformApiBaseUrl(): String = "http://127.0.0.1:8000"
+// Android Emulator routes 10.0.2.2 to the host machine's loopback interface.
+actual fun platformApiBaseUrl(): String = "http://10.0.2.2:8000"
 

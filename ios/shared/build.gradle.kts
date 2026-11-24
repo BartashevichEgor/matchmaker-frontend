@@ -67,6 +67,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.serialization.json)
         }

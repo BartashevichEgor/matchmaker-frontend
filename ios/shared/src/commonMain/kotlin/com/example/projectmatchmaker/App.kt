@@ -14,6 +14,7 @@ import com.example.projectmatchmaker.auth.AuthRepository
 import com.example.projectmatchmaker.auth.TokenStorage
 import com.example.projectmatchmaker.auth.ProfileStorage
 import com.example.projectmatchmaker.network.CardsApi
+import com.example.projectmatchmaker.network.ChatApi
 import com.example.projectmatchmaker.network.CatalogItemDto
 import com.example.projectmatchmaker.network.CandidateScoreDto
 import com.example.projectmatchmaker.network.ProfileReadDto
@@ -130,17 +131,70 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var roleCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
     var skillCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
     var ownedProjectId by remember { mutableStateOf<Int?>(null) }
+    var developerCardComplete by remember { mutableStateOf(false) }
+    var projectCardComplete by remember { mutableStateOf(false) }
+    var onboardingMode by remember { mutableStateOf("developer") }
+    var nextSetup by remember { mutableStateOf("profile") }
     var backendError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val authRepository = remember(useBackend) { if (useBackend) AuthRepository() else null }
     val cardsApi = remember(useBackend) {
         if (useBackend) CardsApi(accessToken = { TokenStorage.getToken() }) else null
     }
+    val chatApi = remember(useBackend) {
+        if (useBackend) ChatApi(accessToken = { TokenStorage.getToken() }) else null
+    }
 
-    DisposableEffect(authRepository, cardsApi) {
+    suspend fun refreshOnboarding(api: CardsApi, applyMode: Boolean = false) {
+        val state = api.onboarding()
+        if (applyMode) {
+            onboardingMode = state.mode
+            profile = profile.copy(registrationMode = state.mode)
+        }
+        developerCardComplete = state.profile.complete
+        projectCardComplete = state.project.complete
+        nextSetup = state.nextSetup
+    }
+
+    suspend fun refreshFavorites(api: CardsApi) {
+        val people = api.favoriteProfiles().map { item ->
+            FavoriteItem(
+                type = FavoriteType.PERSON,
+                id = item.userId.toString(),
+                title = listOf(item.firstName, item.lastName).filter(String::isNotBlank).joinToString(" ").ifBlank { item.username },
+                subtitle = item.roleId?.let { id -> roleCatalog.firstOrNull { it.id == id }?.name }.orEmpty(),
+                skills = item.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
+            )
+        }
+        val projects = api.favoriteProjects().map { item ->
+            FavoriteItem(
+                type = FavoriteType.PROJECT,
+                id = item.id.toString(),
+                title = item.title,
+                subtitle = item.roleIds.firstOrNull()?.let { id -> roleCatalog.firstOrNull { it.id == id }?.name }.orEmpty(),
+                skills = item.skills.mapNotNull { skill -> skillCatalog.firstOrNull { it.id == skill.skillId }?.name },
+            )
+        }
+        favorites = (people + projects).toSet()
+    }
+
+    fun toggleFavorite(item: FavoriteItem) {
+        val targetId = item.id.toIntOrNull() ?: return
+        val saved = item !in favorites
+        coroutineScope.launch {
+            runCatching {
+                cardsApi?.setFavorite(if (item.type == FavoriteType.PERSON) "profile" else "project", targetId, saved)
+            }.onSuccess {
+                favorites = if (saved) favorites + item else favorites - item
+            }.onFailure { backendError = it.message ?: "Не удалось обновить избранное" }
+        }
+    }
+
+    DisposableEffect(authRepository, cardsApi, chatApi) {
         onDispose {
             authRepository?.close()
             cardsApi?.close()
+            chatApi?.close()
         }
     }
 
@@ -150,17 +204,26 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
     androidx.compose.runtime.LaunchedEffect(useBackend) {
         if (useBackend && cardsApi != null) {
-            runCatching { cardsApi.roles() }.onSuccess { roleCatalog = it }
-            runCatching { cardsApi.skills() }.onSuccess { skillCatalog = it }
+            roleCatalog = runCatching { cardsApi.roles() }.getOrDefault(emptyList())
+            skillCatalog = runCatching { cardsApi.skills() }.getOrDefault(emptyList())
 
             // A still-valid saved session restores the profile as soon as the app opens.
             // Keep locally saved optional fields that are not part of the current API yet.
             if (authRepository?.hasSavedSession() == true) {
+                runCatching { refreshFavorites(cardsApi) }
                 val cachedProfile = profile
+                val onboarding = runCatching { cardsApi.onboarding() }.getOrNull()
+                onboarding?.let { state ->
+                    onboardingMode = state.mode
+                    profile = profile.copy(registrationMode = state.mode)
+                    developerCardComplete = state.profile.complete
+                    projectCardComplete = state.project.complete
+                    nextSetup = state.nextSetup
+                }
                 runCatching { cardsApi.myProfile() }.onSuccess { remote ->
                     val serverProfile = remote.toProfile(roleCatalog, skillCatalog, cachedProfile.email)
                     profile = serverProfile.copy(
-                        registrationMode = cachedProfile.registrationMode,
+                        registrationMode = onboarding?.mode ?: cachedProfile.registrationMode,
                         role = serverProfile.role.ifBlank { cachedProfile.role },
                         roleId = serverProfile.roleId ?: cachedProfile.roleId,
                         photoBase64 = cachedProfile.photoBase64,
@@ -174,12 +237,17 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                     runCatching { cardsApi.projects(mine = true).firstOrNull() }.onSuccess { owned ->
                         ownedProjectId = owned?.id
                         project = owned?.toProject(roleCatalog, skillCatalog) ?: ProjectData()
-                        if (owned != null) profile = profile.copy(registrationMode = "project")
                     }
-                    screen = if (profile.isReadyForMainApp()) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
                 }.onFailure {
                     // If the API is temporarily offline, retain a complete cached profile.
                     if (profile.isReadyForMainApp()) screen = AppScreen.CATALOG
+                }
+                screen = if (onboarding == null) {
+                    if (profile.isReadyForMainApp()) AppScreen.CATALOG else AppScreen.CREATE_PROFILE
+                } else when (nextSetup) {
+                    "profile" -> AppScreen.CREATE_PROFILE
+                    "project" -> AppScreen.CREATE_PROJECT
+                    else -> AppScreen.CATALOG
                 }
             }
         }
@@ -195,8 +263,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 runCatching {
                     val owned = cardsApi.projects(mine = true).firstOrNull()
                     ownedProjectId = owned?.id
-                    val projects = cardsApi.recommendedProjects()
-                    val candidates = owned?.let { cardsApi.recommendedCandidates(it.id) }.orEmpty()
+                    val projects = if (developerCardComplete) cardsApi.recommendedProjects() else emptyList()
+                    val candidates = if (projectCardComplete) owned?.let { cardsApi.recommendedCandidates(it.id) }.orEmpty() else emptyList()
                     projects to candidates
                 }.onSuccess { (projects, candidates) ->
                     catalogProjects = projects.map { item ->
@@ -226,6 +294,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             if (screen == AppScreen.MATCHES) {
                 runCatching { cardsApi.matches() }.onSuccess { matchItems = it }.onFailure { backendError = it.message }
             }
+            if (screen == AppScreen.FAVORITES) runCatching { refreshFavorites(cardsApi) }
         }
     }
 
@@ -251,16 +320,23 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                     result.onSuccess {
                         profile = profile.copy(email = email.trim())
                         if (useBackend && cardsApi != null) {
-                            // Load the server profile before deciding whether onboarding is needed.
                             runCatching {
                                 roleCatalog = cardsApi.roles()
                                 skillCatalog = cardsApi.skills()
-                                cardsApi.myProfile()
-                            }.onSuccess { remote ->
-                                profile = remote.toProfile(roleCatalog, skillCatalog, email.trim())
+                                val state = cardsApi.onboarding()
+                                onboardingMode = state.mode
+                                developerCardComplete = state.profile.complete
+                                projectCardComplete = state.project.complete
+                                nextSetup = state.nextSetup
+                                profile = profile.copy(registrationMode = state.mode)
+                                if (state.profile.exists) {
+                                    val remote = cardsApi.myProfile()
+                                    profile = remote.toProfile(roleCatalog, skillCatalog, email.trim()).copy(registrationMode = state.mode)
+                                }
                                 val owned = cardsApi.projects(mine = true).firstOrNull()
                                 ownedProjectId = owned?.id
-                                if (owned != null) profile = profile.copy(registrationMode = "project")
+                                project = owned?.toProject(roleCatalog, skillCatalog) ?: ProjectData()
+                                refreshFavorites(cardsApi)
                             }
                         }
                     }
@@ -268,9 +344,9 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 },
                 onAuthenticated = {
                     sessionRevision += 1
-                    screen = when {
-                        !profile.isReadyForMainApp() -> AppScreen.CREATE_PROFILE
-                        profile.registrationMode == "project" && ownedProjectId == null -> AppScreen.CREATE_PROJECT
+                    screen = when (nextSetup) {
+                        "profile" -> AppScreen.CREATE_PROFILE
+                        "project" -> AppScreen.CREATE_PROJECT
                         else -> AppScreen.CATALOG
                     }
                 },
@@ -281,10 +357,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             AppScreen.REGISTER -> RegisterScreen(
                 initialMode = profile.registrationMode,
                 onModeSelected = { profile = profile.copy(registrationMode = it) },
-                onRegister = { username, email, password ->
-                    val result = authRepository?.register(username, email, password) ?: Result.success(Unit)
+                onRegister = { username, email, password, mode ->
+                    val result = authRepository?.register(username, email, password, mode) ?: Result.success(Unit)
                     result.onSuccess {
-                        profile = profile.copy(username = username.trim(), email = email.trim())
+                        onboardingMode = mode
+                        nextSetup = if (mode == "developer") "profile" else "project"
+                        profile = profile.copy(username = username.trim(), email = email.trim(), registrationMode = mode)
                     }
                     result
                 },
@@ -369,6 +447,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                             experience = profile.experience,
                                             interests = "",
                                             roleId = resolvedRoleId,
+                                            visibility = "published",
                                         ),
                                     )
                                     val selectedSkills = profile.skills.mapNotNull { name -> skillCatalog.firstOrNull { it.name.equals(name, true) }?.id }
@@ -386,7 +465,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                             }
                             result.onSuccess {
                                 backendError = null
-                                screen = if (profile.registrationMode == "project") AppScreen.CREATE_PROJECT else AppScreen.PROFILE
+                                runCatching { cardsApi?.let { refreshOnboarding(it) } }
+                                screen = if (onboardingMode == "project" || profile.registrationMode == "project") AppScreen.CREATE_PROJECT else AppScreen.PROFILE
                                 sessionRevision += 1
                             }
                                 .onFailure { backendError = it.message ?: "Не удалось сохранить профиль" }
@@ -439,7 +519,12 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                                 ownedProjectId = published.id
                             } else project = project.copy(published = true)
                         }
-                        result.onSuccess { backendError = null; screen = AppScreen.PROFILE; sessionRevision += 1 }
+                        result.onSuccess {
+                            backendError = null
+                            runCatching { cardsApi?.let { refreshOnboarding(it) } }
+                            screen = AppScreen.PROFILE
+                            sessionRevision += 1
+                        }
                             .onFailure { backendError = it.message ?: "Не удалось сохранить проект" }
                     }
                 },
@@ -474,9 +559,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.FAVORITES -> FavoritesScreen(
                 favorites = favorites,
-                onFavoriteToggle = { item ->
-                    favorites = if (item in favorites) favorites - item else favorites + item
-                },
+                onFavoriteToggle = ::toggleFavorite,
                 onBackToProfile = { screen = AppScreen.PROFILE },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
@@ -486,9 +569,9 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
             AppScreen.CATALOG -> CatalogScreen(
                 favorites = favorites,
                 showProjectsInitially = profile.registrationMode == "developer",
-                onFavoriteToggle = { item ->
-                    favorites = if (item in favorites) favorites - item else favorites + item
-                },
+                showProjectsTab = developerCardComplete || !useBackend,
+                showPeopleTab = projectCardComplete || !useBackend,
+                onFavoriteToggle = ::toggleFavorite,
                 onCatalog = openCatalog,
                 onProfile = openProfile,
                 onMatches = openMatches,
@@ -520,6 +603,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onChats = openChats,
                 onProfile = openProfile,
                 backendMatches = matchItems,
+                backendEnabled = useBackend && authRepository?.hasSavedSession() == true,
                 incomingLikeAccepted = incomingLikeAccepted,
                 incomingLikeDismissed = incomingLikeDismissed,
                 onAcceptIncomingLike = { incomingLikeAccepted = true; incomingLikeDismissed = false },
@@ -530,7 +614,9 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onProfile = openProfile,
-                showIncomingMatchChat = incomingLikeAccepted,
+                api = chatApi,
+                accessToken = TokenStorage.getToken(),
+                currentUserId = profile.backendUserId,
             )
         }
     }

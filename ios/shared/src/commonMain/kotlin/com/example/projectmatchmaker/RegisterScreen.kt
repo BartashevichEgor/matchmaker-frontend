@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit = {},
-    onRegister: suspend (username: String, email: String, password: String) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
+    onRegister: suspend (username: String, email: String, password: String, mode: String) -> Result<Unit> = { _, _, _, _ -> Result.success(Unit) },
     onAuthenticated: () -> Unit = {},
     initialMode: String = "developer",
     onModeSelected: (String) -> Unit = {},
@@ -276,7 +276,7 @@ fun RegisterScreen(
                             serverError = null
                             scope.launch {
                                 isLoading = true
-                                val result = onRegister(username, email, password)
+                                val result = onRegister(username, email, password, registrationMode)
                                 isLoading = false
 
                                 result.onSuccess { onAuthenticated() }

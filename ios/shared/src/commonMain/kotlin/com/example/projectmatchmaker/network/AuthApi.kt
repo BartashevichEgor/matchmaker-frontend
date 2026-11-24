@@ -46,7 +46,7 @@ class AuthApi(
         return response.body()
     }
 
-    suspend fun register(username: String, email: String, password: String): MessageResponse {
+    suspend fun register(username: String, email: String, password: String, mode: String): MessageResponse {
         val response = client.post("$apiUrl/auth/register") {
             contentType(ContentType.Application.Json)
             setBody(
@@ -54,6 +54,7 @@ class AuthApi(
                     username = username.trim(),
                     email = email.trim(),
                     password = password,
+                    mode = mode,
                 )
             )
         }
