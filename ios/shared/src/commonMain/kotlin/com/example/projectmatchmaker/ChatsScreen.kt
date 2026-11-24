@@ -238,11 +238,14 @@ private fun mergeMessages(current: List<ChatMessageDto>, incoming: ChatMessageDt
 
 private fun Throwable.toChatMessage(fallback: String): String {
     val details = message.orEmpty()
-    return if (details.contains("timeout", ignoreCase = true) ||
+    return if (details.contains("unexpected end of stream", ignoreCase = true) ||
+        details.contains("eofexception", ignoreCase = true) ||
+        details.contains("no route to host", ignoreCase = true) ||
+        details.contains("timeout", ignoreCase = true) ||
         details.contains("connect", ignoreCase = true) ||
         details.contains("refused", ignoreCase = true)
     ) {
-        "Чат-сервис не отвечает. Проверьте, что он запущен на порту 3000."
+        "Сервис чатов сейчас недоступен на порту 3000. Backend API работает отдельно; запустите chat-service и нажмите «Повторить»."
     } else details.ifBlank { fallback }
 }
 
