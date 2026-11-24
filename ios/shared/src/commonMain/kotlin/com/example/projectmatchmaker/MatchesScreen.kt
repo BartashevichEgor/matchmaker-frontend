@@ -38,6 +38,7 @@ fun MatchesScreen(
     onAcceptIncomingLike: () -> Unit = {},
     onDismissIncomingLike: () -> Unit = {},
     onOpenIncomingChat: () -> Unit = onChats,
+    onOpenDemoChat: () -> Unit = onChats,
 ) {
     ScreenFrame(MainDestination.MATCHES, onCatalog, onProfile, {}, onChats) {
         PageCard {
@@ -53,24 +54,20 @@ fun MatchesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (!backendEnabled && !incomingLikeAccepted && !incomingLikeDismissed) {
+                    if (backendMatches.isNullOrEmpty() && !incomingLikeAccepted && !incomingLikeDismissed) {
                         item(key = "incoming-codegarden") {
                             IncomingLikeCard(onAcceptIncomingLike, onDismissIncomingLike)
                         }
                     }
-                    if (!backendEnabled && incomingLikeAccepted) {
+                    if (backendMatches.isNullOrEmpty() && incomingLikeAccepted) {
                         item(key = "mutual-codegarden") {
                             MatchCard(demoIncomingMatch, onOpenIncomingChat)
                         }
                     }
-                    if (!backendEnabled && backendMatches == null) {
-                        items(demoMatches, key = { it.id }) { match -> MatchCard(match, onChats) }
+                    if (backendMatches.isNullOrEmpty()) {
+                        items(demoMatches, key = { it.id }) { match -> MatchCard(match, onOpenDemoChat) }
                     } else {
-                        if (backendMatches.isNullOrEmpty()) {
-                            item { Text("Пока нет взаимных совпадений.", color = MutedTextColor, fontSize = 13.sp) }
-                        } else {
-                            items(backendMatches, key = { it.id }) { match -> BackendMatchCard(match, onChats) }
-                        }
+                        items(backendMatches.orEmpty(), key = { it.id }) { match -> BackendMatchCard(match, onChats) }
                     }
                 }
             }
@@ -82,7 +79,7 @@ fun MatchesScreen(
 private fun IncomingLikeCard(onAccept: () -> Unit, onDismiss: () -> Unit) {
     Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) {
-            Text("Вам понравилась команда", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("Пример · вам понравилась команда", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Row(Modifier.padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = ProfileAvatarColor, shape = CircleShape, modifier = Modifier.size(50.dp)) {
                     Text("CG", color = CardBgColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp))

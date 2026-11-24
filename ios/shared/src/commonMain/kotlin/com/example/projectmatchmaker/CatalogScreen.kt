@@ -108,8 +108,8 @@ fun CatalogScreen(
     var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
     var draftFilter by remember { mutableStateOf(CatalogFilter()) }
     var showExamples by remember { mutableStateOf(false) }
-    val hasBackendCards = projects.isNotEmpty() || people.isNotEmpty()
-    val demoMode = showExamples || (!backendEnabled && !hasBackendCards)
+    val hasCardsForMode = if (tab == CatalogTab.PROJECTS) projects.isNotEmpty() else people.isNotEmpty()
+    val demoMode = showExamples || (!hasCardsForMode && !isLoading)
     val availableProjects = if (demoMode) demoProjects else projects
     val availablePeople = if (demoMode) demoPeople else people
     val filteredProjects = availableProjects.filter { item ->
@@ -168,6 +168,20 @@ fun CatalogScreen(
                             appliedFilter = CatalogFilter()
                             draftFilter = CatalogFilter()
                         }
+                    } else {
+                        Surface(
+                            color = SectionBgColor,
+                            shape = RoundedCornerShape(50.dp),
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        ) {
+                            Text(
+                                if (tab == CatalogTab.PROJECTS) "Проекты для вашей анкеты" else "Специалисты для вашего проекта",
+                                color = PrimaryButtonColor,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
+                            )
+                        }
                     }
                     Text(
                         if (tab == CatalogTab.PROJECTS) {
@@ -186,7 +200,7 @@ fun CatalogScreen(
                         Text(errorMessage, color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                         PrimaryButton("Повторить загрузку", onRetry)
                     }
-                    if (backendEnabled && !demoMode && noVisibleCard && !isLoading) {
+                    if (!demoMode && noVisibleCard && !isLoading) {
                         Text(
                             if (errorMessage != null) "Пока можно открыть примеры и проверить фильтры." else "Пока нет опубликованных анкет для этого режима.",
                             color = MutedTextColor,
@@ -201,8 +215,7 @@ fun CatalogScreen(
                         })
                     }
                     if (demoMode) {
-                        Text("Демо-примеры · фильтры и закладки работают локально", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
-                        Text("Чтобы загрузить реальные анкеты, повторите запрос после восстановления соединения.", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text("Примеры · фильтры и закладки работают локально", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     if (!isLoading && noVisibleCard && !(backendEnabled && !demoMode)) {
                         val hasFilters = appliedFilter != CatalogFilter()
