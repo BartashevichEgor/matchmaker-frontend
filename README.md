@@ -39,7 +39,7 @@ Android и iOS используют общий интерфейс из `ios/shar
 
 1. Откройте папку `ios` в Android Studio и дождитесь синхронизации Gradle.
 2. Запустите конфигурацию `androidApp` на телефоне или эмуляторе.
-3. Для Android-эмулятора API на компьютере доступен по адресу `http://10.0.2.2:8000`; для физического телефона укажите адрес компьютера в `ios/shared/src/androidMain/kotlin/com/example/projectmatchmaker/network/ApiConfig.android.kt`.
+3. Пробросьте API и чат в Android-эмулятор: `adb reverse tcp:8000 tcp:8000` и `adb reverse tcp:3000 tcp:3000`. Для физического телефона укажите адрес компьютера в `ios/shared/src/androidMain/kotlin/com/example/projectmatchmaker/network/ApiConfig.android.kt`.
 
 Собрать APK можно командой из папки `ios`:
 

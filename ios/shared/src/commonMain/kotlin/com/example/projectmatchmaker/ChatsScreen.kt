@@ -83,7 +83,7 @@ fun ChatsScreen(
         error = null
         runCatching { api.conversations() }
             .onSuccess { conversations = it.sortedByDescending { chat -> chat.lastMessage?.createdAt ?: chat.createdAt } }
-            .onFailure { error = it.message ?: "Не удалось загрузить список чатов" }
+            .onFailure { error = it.toChatMessage("Не удалось загрузить список чатов") }
         loading = false
     }
 
@@ -99,7 +99,7 @@ fun ChatsScreen(
                 runCatching { chatApi.markRead(conversation.id) }
                 conversations = conversations.map { if (it.id == conversation.id) it.copy(unreadCount = 0) else it }
             }
-            .onFailure { error = it.message ?: "Не удалось загрузить переписку" }
+            .onFailure { error = it.toChatMessage("Не удалось загрузить переписку") }
         loading = false
     }
 
@@ -144,7 +144,7 @@ fun ChatsScreen(
                     draft = ""
                     error = null
                 }
-                .onFailure { error = it.message ?: "Не удалось отправить сообщение" }
+                .onFailure { error = it.toChatMessage("Не удалось отправить сообщение") }
             sending = false
         }
     }
@@ -235,6 +235,16 @@ fun ChatsScreen(
 private fun mergeMessages(current: List<ChatMessageDto>, incoming: ChatMessageDto): List<ChatMessageDto> =
     if (current.any { it.id == incoming.id || it.clientMessageId == incoming.clientMessageId }) current
     else (current + incoming).sortedBy(ChatMessageDto::createdAt)
+
+private fun Throwable.toChatMessage(fallback: String): String {
+    val details = message.orEmpty()
+    return if (details.contains("timeout", ignoreCase = true) ||
+        details.contains("connect", ignoreCase = true) ||
+        details.contains("refused", ignoreCase = true)
+    ) {
+        "Чат-сервис не отвечает. Проверьте, что он запущен на порту 3000."
+    } else details.ifBlank { fallback }
+}
 
 private data class PeerName(val name: String, val initials: String)
 

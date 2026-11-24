@@ -1,8 +1,7 @@
 package com.example.projectmatchmaker.network
 
 /**
- * Android-эмулятор видит loopback компьютера через адрес 10.0.2.2.
+ * Порт backend пробрасывается в loopback эмулятора командой adb reverse.
  */
-// Android Emulator routes 10.0.2.2 to the host machine's loopback interface.
-actual fun platformApiBaseUrl(): String = "http://10.0.2.2:8000"
+actual fun platformApiBaseUrl(): String = "http://127.0.0.1:8000"
 
