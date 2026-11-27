@@ -341,7 +341,7 @@ private fun Throwable.toChatMessage(fallback: String): String {
         details.contains("connect", ignoreCase = true) ||
         details.contains("refused", ignoreCase = true)
     ) {
-        "Сервис чатов сейчас недоступен на порту 3000. Backend API работает отдельно; запустите chat-service и нажмите «Повторить»."
+        "Не удалось подключиться к сервису чатов. Попробуйте ещё раз позже или откройте пример переписки."
     } else details.ifBlank { fallback }
 }
 
