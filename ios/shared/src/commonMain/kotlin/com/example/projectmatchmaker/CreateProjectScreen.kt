@@ -8,9 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +38,11 @@ fun CreateProjectScreen(
 ) {
     val selectedSkills = project.skills.split(',').map(String::trim).filter(String::isNotBlank)
     val canSave = project.title.trim().length >= 3 && project.description.trim().length >= 10
-    val canPublish = canSave && (project.role.isNotBlank() || selectedSkills.isNotEmpty())
+    val projectRoles = (teamRoleGroups.flatMap { (_, items) -> items.map(TeamRole::title) } + roles.map(CatalogItemDto::name)).distinct()
+    val projectSkills = skills.map(CatalogItemDto::name)
+    val roleCanBeSaved = project.role.isBlank() || roles.any { it.name.equals(project.role, ignoreCase = true) }
+    val canSaveDraft = canSave && roleCanBeSaved
+    val canPublish = canSave && project.role.isNotBlank() && roleCanBeSaved
 
     ScreenFrame(MainDestination.PROFILE, onCatalog, {}, onMatches, onChats) {
         PageCard {
@@ -59,8 +62,8 @@ fun CreateProjectScreen(
                     FormLabel("Кого ищете")
                     ProjectSelectField(
                         value = project.role,
-                        placeholder = if (roles.isEmpty()) "Роли не загрузились" else "Выберите специализацию",
-                        options = roles.map(CatalogItemDto::name),
+                        placeholder = "Выберите специализацию",
+                        options = projectRoles,
                         onSelect = { onProjectChange(project.copy(role = it)) },
                     )
                     Text(
@@ -73,7 +76,7 @@ fun CreateProjectScreen(
                     FormLabel("Навыки")
                     ProjectSkillsField(
                         selected = selectedSkills,
-                        options = skills.map(CatalogItemDto::name),
+                        options = projectSkills,
                         onSelectionChange = { onProjectChange(project.copy(skills = it.joinToString(", "))) },
                     )
                     Text(
@@ -86,7 +89,7 @@ fun CreateProjectScreen(
                     FormLabel("Формат работы")
                     ProjectSelectField(
                         value = project.workFormat,
-                        placeholder = "Выберите формат",
+                        placeholder = "Выберите формат работы",
                         options = listOf("Удалённо", "Гибридный", "В офисе"),
                         onSelect = { onProjectChange(project.copy(workFormat = it)) },
                     )
@@ -105,8 +108,10 @@ fun CreateProjectScreen(
                             fontSize = 11.sp,
                             modifier = Modifier.padding(top = 10.dp),
                         )
+                    } else if (project.role.isNotBlank() && !roleCanBeSaved) {
+                        Text("Эта специализация пока не поддерживается сервером. Выберите вариант из каталога ролей.", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp))
                     } else if (!canPublish) {
-                        Text("Для публикации выберите роль или хотя бы один навык.", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp))
+                        Text("Для публикации выберите специализацию, которую ищет команда.", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp))
                     }
                     if (!errorMessage.isNullOrBlank()) {
                         Text(errorMessage, color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
@@ -120,7 +125,7 @@ fun CreateProjectScreen(
                             if (isSaving) "Сохраняем…" else "В черновик",
                             onSaveDraft,
                             Modifier.weight(1f),
-                            enabled = canSave && !isSaving,
+                            enabled = canSaveDraft && !isSaving,
                         )
                         PrimaryButton(
                             if (isSaving) "Сохраняем…" else "Опубликовать",
@@ -144,23 +149,21 @@ private fun ProjectSelectField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-            placeholder = { Text(placeholder, color = MutedTextColor, fontSize = 14.sp) },
-            trailingIcon = { Text("⌄", color = PrimaryButtonColor, fontSize = 20.sp) },
+        Surface(
+            color = InputBgColor,
             shape = RoundedCornerShape(12.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = InputBgColor,
-                unfocusedContainerColor = InputBgColor,
-                focusedIndicatorColor = BorderColor,
-                unfocusedIndicatorColor = BorderColor,
-                focusedTextColor = TextDarkColor,
-                unfocusedTextColor = TextDarkColor,
-            ),
-        )
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor),
+            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+        ) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(value.ifBlank { placeholder }, color = if (value.isBlank()) MutedTextColor else TextDarkColor, fontSize = 14.sp)
+                Text("⌄", color = PrimaryButtonColor, fontSize = 20.sp)
+            }
+        }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.heightIn(max = 320.dp)) {
             if (options.isEmpty()) {
                 DropdownMenuItem(text = { Text("Список пока недоступен", color = MutedTextColor) }, onClick = { expanded = false }, enabled = false)
@@ -184,24 +187,25 @@ private fun ProjectSkillsField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = selected.joinToString(", "),
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-            placeholder = { Text(if (options.isEmpty()) "Навыки не загрузились" else "Выберите нужные навыки", color = MutedTextColor, fontSize = 14.sp) },
-            trailingIcon = { Text("⌄", color = PrimaryButtonColor, fontSize = 20.sp) },
+        Surface(
+            color = InputBgColor,
             shape = RoundedCornerShape(12.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = InputBgColor,
-                unfocusedContainerColor = InputBgColor,
-                focusedIndicatorColor = BorderColor,
-                unfocusedIndicatorColor = BorderColor,
-                focusedTextColor = TextDarkColor,
-                unfocusedTextColor = TextDarkColor,
-            ),
-        )
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor),
+            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+        ) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(selected.joinToString(", ").ifBlank { if (options.isEmpty()) "Список навыков недоступен" else "Выберите нужные навыки" }, color = if (selected.isEmpty()) MutedTextColor else TextDarkColor, fontSize = 14.sp)
+                Text("⌄", color = PrimaryButtonColor, fontSize = 20.sp)
+            }
+        }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.heightIn(max = 320.dp)) {
+            if (options.isEmpty()) {
+                DropdownMenuItem(text = { Text("Навыки не загрузились. Проверьте соединение и откройте экран снова.", color = MutedTextColor) }, onClick = { expanded = false }, enabled = false)
+            }
             options.distinct().forEach { option ->
                 val isSelected = option in selected
                 DropdownMenuItem(

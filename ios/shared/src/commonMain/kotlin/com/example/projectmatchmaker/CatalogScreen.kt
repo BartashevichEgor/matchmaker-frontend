@@ -33,14 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private enum class CatalogTab { PROJECTS, PEOPLE }
-private enum class CatalogWorkFormat(val label: String) {
-    ANY("Любой формат"), REMOTE("Удалённо"), HYBRID("Гибридный"), OFFICE("В офисе")
-}
-
 private data class CatalogFilter(
     val role: String = "Все роли",
     val skill: String = "Любые навыки",
-    val workFormat: CatalogWorkFormat = CatalogWorkFormat.ANY,
 )
 
 private val demoPeople = listOf(
@@ -117,13 +112,11 @@ fun CatalogScreen(
     val filteredProjects = availableProjects.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
             (searchQuery.isBlank() || listOf(item.title, item.description, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val filteredPeople = availablePeople.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
             (searchQuery.isBlank() || listOf(item.name, item.bio, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val visibleProject = filteredProjects.getOrNull(cardIndex)
@@ -333,12 +326,9 @@ private fun CatalogFilters(
 ) {
     Column(modifier.padding(4.dp)) {
         Text("Фильтры", color = TextDarkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text("Подбери анкеты по роли, навыку и формату работы", color = MutedTextColor, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 16.dp))
+        Text("Подбери анкеты по роли и навыкам", color = MutedTextColor, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 16.dp))
         FilterDropdown("Роль", filter.role, listOf("Все роли") + roles) { onFilterChange(filter.copy(role = it)) }
         FilterDropdown("Навыки", filter.skill, listOf("Любые навыки") + skills) { onFilterChange(filter.copy(skill = it)) }
-        FilterDropdown("Формат работы", filter.workFormat.label, CatalogWorkFormat.values().map { it.label }) { label ->
-            onFilterChange(filter.copy(workFormat = CatalogWorkFormat.values().first { it.label == label }))
-        }
         PrimaryButton("Применить", onApply, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
         SecondaryButton("Назад", onBack, Modifier.fillMaxWidth().padding(top = 8.dp))
     }
