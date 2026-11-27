@@ -169,18 +169,16 @@ fun CatalogScreen(
                             draftFilter = CatalogFilter()
                         }
                     } else {
-                        Surface(
-                            color = SectionBgColor,
-                            shape = RoundedCornerShape(50.dp),
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        ) {
-                            Text(
-                                if (tab == CatalogTab.PROJECTS) "Проекты для вашей анкеты" else "Специалисты для вашего проекта",
-                                color = PrimaryButtonColor,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
-                            )
+                        Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+                            Surface(color = PrimaryButtonColor, shape = RoundedCornerShape(50.dp)) {
+                                Text(
+                                    if (tab == CatalogTab.PROJECTS) "Проекты" else "Специалисты",
+                                    color = CardBgColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
+                                )
+                            }
                         }
                     }
                     Text(

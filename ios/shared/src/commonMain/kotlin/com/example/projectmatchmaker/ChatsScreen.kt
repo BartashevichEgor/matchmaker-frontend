@@ -191,7 +191,7 @@ fun ChatsScreen(
             val sent = ChatMessageDto(
                 id = "demo-message-${Random.nextLong().toULong()}",
                 conversationId = DEMO_CONVERSATION_ID,
-                senderUserId = currentUserId ?: DEMO_OWNER_ID,
+                senderUserId = if (conversation.id == DEMO_CONVERSATION_ID) DEMO_OWNER_ID else currentUserId ?: DEMO_OWNER_ID,
                 clientMessageId = "demo-client-${Random.nextLong().toULong()}",
                 body = body,
                 createdAt = timestamp,
@@ -298,7 +298,7 @@ fun ChatsScreen(
                             } else if (messages.isEmpty()) {
                                 item { Text("Начните переписку", color = MutedTextColor, modifier = Modifier.padding(12.dp)) }
                             }
-                            val messageOwnerId = currentUserId ?: if (conversation.id == DEMO_CONVERSATION_ID) DEMO_OWNER_ID else -1
+                            val messageOwnerId = if (conversation.id == DEMO_CONVERSATION_ID) DEMO_OWNER_ID else currentUserId ?: -1
                             items(messages, key = ChatMessageDto::id) { message ->
                                 MessageBubble(message.body, message.createdAt, message.senderUserId == messageOwnerId)
                             }
