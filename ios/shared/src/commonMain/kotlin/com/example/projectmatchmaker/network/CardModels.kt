@@ -15,6 +15,8 @@ data class ProfileUpdateDto(
     val experience: String = "",
     val interests: String = "",
     @SerialName("role_id") val roleId: Int? = null,
+    val visibility: String = "draft",
+    @SerialName("work_format") val workFormat: String = "remote",
 )
 
 @Serializable
@@ -26,6 +28,10 @@ data class ProjectWriteDto(
     val description: String,
     val skills: List<ProjectSkillDto> = emptyList(),
     @SerialName("role_ids") val roleIds: List<Int> = emptyList(),
+    val kind: String = "project",
+    @SerialName("work_format") val workFormat: String = "remote",
+    val commitment: String = "flexible",
+    val visibility: String = "draft",
 )
 
 @Serializable
@@ -78,8 +84,10 @@ data class ProjectDto(
     val title: String,
     val description: String,
     val status: String,
+    val visibility: String = "draft",
     @SerialName("created_at") val createdAt: String,
     @SerialName("work_format") val workFormat: String? = null,
+    val commitment: String = "flexible",
     val skills: List<ProjectSkillDto> = emptyList(),
     @SerialName("role_ids") val roleIds: List<Int> = emptyList(),
 )
@@ -111,10 +119,29 @@ data class MatchDto(
     @SerialName("candidate_id") val candidateId: Int,
     @SerialName("created_at") val createdAt: String,
     @SerialName("room_key") val roomKey: String,
+    val project: ChatProjectSummaryDto? = null,
+    val candidate: ChatCandidateSummaryDto? = null,
 )
 
 @Serializable
 data class SwipeResponseDto(
     val decision: String,
     val match: MatchDto? = null,
+)
+
+@Serializable
+data class OnboardingCardStatusDto(
+    val exists: Boolean,
+    val complete: Boolean,
+    val visibility: String? = null,
+    val status: String? = null,
+)
+
+@Serializable
+data class OnboardingReadDto(
+    val mode: String,
+    val profile: OnboardingCardStatusDto,
+    val project: OnboardingCardStatusDto,
+    @SerialName("next_setup") val nextSetup: String,
+    @SerialName("can_create_project") val canCreateProject: Boolean,
 )

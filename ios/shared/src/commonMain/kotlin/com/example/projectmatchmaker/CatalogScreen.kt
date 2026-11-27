@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
@@ -79,6 +80,8 @@ fun CatalogScreen(
     favorites: Set<FavoriteItem> = emptySet(),
     onFavoriteToggle: (FavoriteItem) -> Unit = {},
     showProjectsInitially: Boolean = false,
+    showProjectsTab: Boolean = true,
+    showPeopleTab: Boolean = true,
     onCatalog: () -> Unit,
     onProfile: () -> Unit,
     onMatches: () -> Unit,
@@ -92,24 +95,36 @@ fun CatalogScreen(
     onSwipeProject: (Int, String) -> Unit = { _, _ -> },
     onSwipePerson: (Int, String) -> Unit = { _, _ -> },
 ) {
-    var tab by remember {
+    var selectedTab by remember(showProjectsInitially) {
         mutableStateOf(if (showProjectsInitially) CatalogTab.PROJECTS else CatalogTab.PEOPLE)
+    }
+    val canSwitchTabs = showProjectsTab && showPeopleTab
+    val tab = when {
+        showProjectsTab && !showPeopleTab -> CatalogTab.PROJECTS
+        showPeopleTab && !showProjectsTab -> CatalogTab.PEOPLE
+        else -> selectedTab
     }
     var cardIndex by remember { mutableStateOf(0) }
     var showFilters by remember { mutableStateOf(false) }
     var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
     var draftFilter by remember { mutableStateOf(CatalogFilter()) }
-    val availableProjects = projects.ifEmpty { demoProjects }
-    val availablePeople = people.ifEmpty { demoPeople }
+    var showExamples by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val hasCardsForMode = if (tab == CatalogTab.PROJECTS) projects.isNotEmpty() else people.isNotEmpty()
+    val demoMode = showExamples || (!hasCardsForMode && !isLoading)
+    val availableProjects = if (demoMode) demoProjects else projects
+    val availablePeople = if (demoMode) demoPeople else people
     val filteredProjects = availableProjects.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
+            (searchQuery.isBlank() || listOf(item.title, item.description, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val filteredPeople = availablePeople.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
+            (searchQuery.isBlank() || listOf(item.name, item.bio, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val visibleProject = filteredProjects.getOrNull(cardIndex)
     val visiblePerson = filteredPeople.getOrNull(cardIndex)
@@ -150,17 +165,39 @@ fun CatalogScreen(
                         )
                     } else {
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
-                    CatalogTabs(tab) {
-                        tab = it
-                        cardIndex = 0
-                        appliedFilter = CatalogFilter()
-                        draftFilter = CatalogFilter()
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it; cardIndex = 0 },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        singleLine = true,
+                        placeholder = { Text("Поиск по каталогу", color = MutedTextColor, fontSize = 13.sp) },
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    if (canSwitchTabs) {
+                        CatalogTabs(tab) {
+                            selectedTab = it
+                            cardIndex = 0
+                            appliedFilter = CatalogFilter()
+                            draftFilter = CatalogFilter()
+                        }
+                    } else {
+                        Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+                            Surface(color = PrimaryButtonColor, shape = RoundedCornerShape(50.dp)) {
+                                Text(
+                                    if (tab == CatalogTab.PROJECTS) "Проекты" else "Специалисты",
+                                    color = CardBgColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
+                                )
+                            }
+                        }
                     }
                     Text(
-                        if (showProjectsInitially) {
-                            "От имени: моя анкета. Специалисты доступны в проектном режиме."
+                        if (tab == CatalogTab.PROJECTS) {
+                            "Подбираем команды для вашей анкеты."
                         } else {
-                            "От имени: мой проект. Проекты доступны в персональном режиме."
+                            "Подбираем специалистов для вашего проекта."
                         },
                         color = MutedTextColor,
                         fontSize = 10.sp,
@@ -170,10 +207,27 @@ fun CatalogScreen(
                     if (isLoading) {
                         Text("Загружаем карточки…", color = TextDarkColor, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
                     } else if (errorMessage != null) {
-                        Text("Не удалось обновить каталог. Пока можно посмотреть примеры.", color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text(errorMessage, color = ErrorColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                         PrimaryButton("Повторить загрузку", onRetry)
                     }
-                    if (!isLoading && noVisibleCard) {
+                    if (!demoMode && noVisibleCard && !isLoading) {
+                        Text(
+                            if (errorMessage != null) "Пока можно открыть примеры и проверить фильтры." else "Пока нет опубликованных анкет для этого режима.",
+                            color = MutedTextColor,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 8.dp),
+                        )
+                        PrimaryButton("Посмотреть примеры", onClick = {
+                            showExamples = true
+                            cardIndex = 0
+                            appliedFilter = CatalogFilter()
+                            draftFilter = CatalogFilter()
+                        })
+                    }
+                    if (demoMode) {
+                        Text("Примеры · фильтры и закладки работают локально", color = MutedTextColor, fontSize = 10.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    if (!isLoading && noVisibleCard && !(backendEnabled && !demoMode)) {
                         val hasFilters = appliedFilter != CatalogFilter()
                         Text(
                             if (hasFilters) "По выбранным фильтрам ничего не найдено." else "Карточки закончились. Можно начать просмотр заново.",
@@ -206,14 +260,14 @@ fun CatalogScreen(
                     SwipeActions(
                         enabled = !isLoading && !noVisibleCard,
                         onPass = {
-                            if (backendEnabled) {
+                            if (backendEnabled && !demoMode) {
                                 if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "pass") }
                                 else visiblePerson?.id?.let { onSwipePerson(it, "pass") }
                             }
                             cardIndex += 1
                         },
                         onLike = {
-                            if (backendEnabled) {
+                            if (backendEnabled && !demoMode) {
                                 if (tab == CatalogTab.PROJECTS) visibleProject?.id?.let { onSwipeProject(it, "like") }
                                 else visiblePerson?.id?.let { onSwipePerson(it, "like") }
                             }

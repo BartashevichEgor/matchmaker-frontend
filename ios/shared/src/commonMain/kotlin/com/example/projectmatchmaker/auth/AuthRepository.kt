@@ -14,9 +14,9 @@ class AuthRepository(
         TokenStorage.saveRefreshToken(tokens.refreshToken)
     }
 
-    suspend fun register(username: String, email: String, password: String): Result<Unit> = authRequest {
+    suspend fun register(username: String, email: String, password: String, mode: String): Result<Unit> = authRequest {
         // Backend требует подтвердить email перед первым входом.
-        api.register(username, email, password)
+        api.register(username, email, password, mode)
     }
 
     suspend fun verifyEmail(email: String, code: String): Result<Unit> = authRequest {

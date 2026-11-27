@@ -53,17 +53,12 @@ fun ProfileScreen(
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            Modifier.size(76.dp).background(ProfileAvatarColor, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                initials(profile.name),
-                                color = CardBgColor,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
+                        ProfileAvatar(
+                            photoBase64 = profile.photoBase64,
+                            initials = initials(profile.name),
+                            modifier = Modifier,
+                            size = 76.dp,
+                        )
                         Column(Modifier.padding(start = 16.dp)) {
                             Text(
                                 profile.name.ifBlank { "Имя не заполнено" },

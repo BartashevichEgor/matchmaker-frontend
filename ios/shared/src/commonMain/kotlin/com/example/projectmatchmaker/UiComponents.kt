@@ -274,17 +274,20 @@ fun SecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = InputBgColor,
+            disabledContainerColor = DisabledButtonColor,
             contentColor = PrimaryButtonColor,
         ),
     ) {
-        Text(text, color = PrimaryButtonColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = if (enabled) PrimaryButtonColor else MutedTextColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 

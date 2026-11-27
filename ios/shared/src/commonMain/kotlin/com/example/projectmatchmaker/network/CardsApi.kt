@@ -6,6 +6,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.delete
 import io.ktor.client.request.patch
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -39,6 +40,35 @@ class CardsApi(
 
     suspend fun myProfile(): ProfileReadDto =
         client.get("$apiUrl/profiles/me") { authorize() }.checked().body()
+
+    suspend fun onboarding(): OnboardingReadDto =
+        client.get("$apiUrl/onboarding") { authorize() }.checked().body()
+
+    suspend fun favoriteProfiles(offset: Int = 0, limit: Int = 100): List<PublicProfileDto> =
+        client.get("$apiUrl/favorites") {
+            authorize()
+            parameter("kind", "profile")
+            parameter("offset", offset)
+            parameter("limit", limit)
+        }.checked().body()
+
+    suspend fun favoriteProjects(offset: Int = 0, limit: Int = 100): List<ProjectDto> =
+        client.get("$apiUrl/favorites") {
+            authorize()
+            parameter("kind", "project")
+            parameter("offset", offset)
+            parameter("limit", limit)
+        }.checked().body()
+
+    suspend fun setFavorite(kind: String, targetId: Int, saved: Boolean) {
+        require(kind == "profile" || kind == "project")
+        val response = if (saved) {
+            client.put("$apiUrl/favorites/$kind/$targetId") { authorize() }
+        } else {
+            client.delete("$apiUrl/favorites/$kind/$targetId") { authorize() }
+        }
+        response.checked()
+    }
 
     suspend fun updateProfile(profile: ProfileUpdateDto): ProfileReadDto = client.patch("$apiUrl/profiles/me") {
         authorize()
@@ -150,6 +180,6 @@ class CardsApi(
         val detail = runCatching {
             json.parseToJsonElement(bodyAsText()).jsonObject["detail"]?.jsonPrimitive?.contentOrNull
         }.getOrNull()
-        throw ApiException(detail ?: "Ошибка сервера (${status.value})")
+        throw ApiException(detail ?: "Ошибка сервера (${status.value})", status.value)
     }
 }

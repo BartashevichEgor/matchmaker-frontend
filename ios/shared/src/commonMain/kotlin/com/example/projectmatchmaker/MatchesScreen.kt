@@ -32,11 +32,14 @@ fun MatchesScreen(
     onChats: () -> Unit,
     onProfile: () -> Unit,
     backendMatches: List<MatchDto>? = null,
+    backendEnabled: Boolean = false,
+    currentUserId: Int? = null,
     incomingLikeAccepted: Boolean = false,
     incomingLikeDismissed: Boolean = false,
     onAcceptIncomingLike: () -> Unit = {},
     onDismissIncomingLike: () -> Unit = {},
     onOpenIncomingChat: () -> Unit = onChats,
+    onOpenDemoChat: (String) -> Unit = { onChats() },
 ) {
     ScreenFrame(MainDestination.MATCHES, onCatalog, onProfile, {}, onChats) {
         PageCard {
@@ -62,15 +65,9 @@ fun MatchesScreen(
                             MatchCard(demoIncomingMatch, onOpenIncomingChat)
                         }
                     }
-                    if (backendMatches == null) {
-                        items(demoMatches, key = { it.id }) { match -> MatchCard(match, onChats) }
-                    } else if (backendMatches.isEmpty()) {
-                        item { Text("Пока нет взаимных совпадений.", color = MutedTextColor, fontSize = 13.sp) }
-                    } else {
-                        items(backendMatches, key = { it.id }) { match ->
-                            BackendMatchCard(match, onChats)
-                        }
-                    }
+                    items(backendMatches.orEmpty(), key = { "backend-${it.id}" }) { match -> BackendMatchCard(match, currentUserId, onChats) }
+                    item(key = "demo-heading") { Text("Примеры мэтчей", color = MutedTextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    items(demoMatches, key = { "demo-${it.id}" }) { match -> MatchCard(match) { onOpenDemoChat(match.id) } }
                 }
             }
         }
@@ -81,7 +78,7 @@ fun MatchesScreen(
 private fun IncomingLikeCard(onAccept: () -> Unit, onDismiss: () -> Unit) {
     Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) {
-            Text("Вам понравилась команда", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("Пример · вам понравилась команда", color = PrimaryButtonColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Row(Modifier.padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = ProfileAvatarColor, shape = CircleShape, modifier = Modifier.size(50.dp)) {
                     Text("CG", color = CardBgColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp))
@@ -99,11 +96,13 @@ private fun IncomingLikeCard(onAccept: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun BackendMatchCard(match: MatchDto, onOpenChat: () -> Unit) {
+private fun BackendMatchCard(match: MatchDto, currentUserId: Int?, onOpenChat: () -> Unit) {
     Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) {
-            Text("Совпадение #${match.id}", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text("Проект #${match.projectId} · участник #${match.candidateId}", color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(match.project?.title ?: "Проект #${match.projectId}", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            val candidate = match.candidate?.displayName?.takeIf(String::isNotBlank) ?: "Специалист #${match.candidateId}"
+            val context = if (match.project?.ownerId == currentUserId) "Мэтч со специалистом: $candidate" else "Команда и проект: ${match.project?.title ?: "#${match.projectId}"}"
+            Text(context, color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
             PrimaryButton("Открыть чат", onOpenChat)
         }
     }
