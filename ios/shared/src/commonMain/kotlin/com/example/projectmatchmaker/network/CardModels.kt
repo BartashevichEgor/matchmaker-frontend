@@ -31,7 +31,7 @@ data class ProjectWriteDto(
     val kind: String = "project",
     @SerialName("work_format") val workFormat: String = "remote",
     val commitment: String = "flexible",
-    val visibility: String = "published",
+    val visibility: String = "draft",
 )
 
 @Serializable
@@ -84,8 +84,10 @@ data class ProjectDto(
     val title: String,
     val description: String,
     val status: String,
+    val visibility: String = "draft",
     @SerialName("created_at") val createdAt: String,
     @SerialName("work_format") val workFormat: String? = null,
+    val commitment: String = "flexible",
     val skills: List<ProjectSkillDto> = emptyList(),
     @SerialName("role_ids") val roleIds: List<Int> = emptyList(),
 )

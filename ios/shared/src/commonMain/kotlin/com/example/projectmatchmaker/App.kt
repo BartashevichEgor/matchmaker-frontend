@@ -93,17 +93,43 @@ private fun ProjectDto.toProject(roles: List<CatalogItemDto>, skills: List<Catal
     description = description,
     role = roleIds.firstOrNull()?.let { id -> roles.firstOrNull { it.id == id }?.name }.orEmpty(),
     skills = this.skills.mapNotNull { skill -> skills.firstOrNull { it.id == skill.skillId }?.name }.joinToString(", "),
-    published = status == "open",
+    workFormat = when (workFormat) {
+        "hybrid" -> "Гибридный"
+        "onsite" -> "В офисе"
+        else -> "Удалённо"
+    },
+    employment = when (commitment) {
+        "full_time" -> "Полная занятость"
+        "part_time" -> "Частичная занятость"
+        else -> "Гибкий график"
+    },
+    published = visibility == "published" && status == "open",
     visible = status != "blocked",
+    visibility = visibility,
 )
 
-private fun ProjectData.toWriteDto(roles: List<CatalogItemDto>, skills: List<CatalogItemDto>) = ProjectWriteDto(
+private fun ProjectData.toWriteDto(
+    roles: List<CatalogItemDto>,
+    skills: List<CatalogItemDto>,
+    visibility: String = this.visibility,
+) = ProjectWriteDto(
     title = title.trim(),
     description = description.trim(),
     skills = this.skills.split(',').map(String::trim).filter(String::isNotBlank).mapNotNull { name ->
         skills.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { ProjectSkillDto(it.id, 3) }
     },
     roleIds = roles.firstOrNull { it.name.equals(role.trim(), ignoreCase = true) }?.let { listOf(it.id) }.orEmpty(),
+    workFormat = when (workFormat) {
+        "Гибридный" -> "hybrid"
+        "В офисе" -> "onsite"
+        else -> "remote"
+    },
+    commitment = when (employment) {
+        "Полная занятость" -> "full_time"
+        "Частичная занятость" -> "part_time"
+        else -> "flexible"
+    },
+    visibility = visibility,
 )
 
 /**
@@ -119,6 +145,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var screen by remember { mutableStateOf(AppScreen.LOGIN) }
     var profile by remember { mutableStateOf(ProfileStorage.load() ?: ProfileData()) }
     var project by remember { mutableStateOf(ProjectData()) }
+    var isSavingProject by remember { mutableStateOf(false) }
+    var projectSaveError by remember { mutableStateOf<String?>(null) }
     var favorites by remember { mutableStateOf(emptySet<FavoriteItem>()) }
     var catalogProjects by remember { mutableStateOf(emptyList<CatalogProjectItem>()) }
     var catalogPeople by remember { mutableStateOf(emptyList<CatalogPersonItem>()) }
@@ -356,6 +384,47 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     val openProfile = {
         screen = if (profileIsReady) AppScreen.PROFILE else AppScreen.CREATE_PROFILE
     }
+    fun saveProject(publish: Boolean) {
+        if (isSavingProject) return
+        isSavingProject = true
+        projectSaveError = null
+        coroutineScope.launch {
+            try {
+                val targetVisibility = if (publish) "published" else "draft"
+                val draftToSave = project.copy(visibility = targetVisibility, published = publish)
+                if (useBackend && cardsApi != null) {
+                    if (authRepository?.hasSavedSession() != true) {
+                        error("Войдите в аккаунт, чтобы сохранить проект.")
+                    }
+                    suspend fun saveToBackend(): ProjectDto = if (draftToSave.id == null) {
+                        cardsApi.createProject(draftToSave.toWriteDto(roleCatalog, skillCatalog, targetVisibility))
+                    } else {
+                        cardsApi.updateProject(draftToSave.id, draftToSave.toWriteDto(roleCatalog, skillCatalog, targetVisibility))
+                    }
+                    val saved = try {
+                        saveToBackend()
+                    } catch (failure: Throwable) {
+                        if ((failure as? ApiException)?.statusCode == 401 && authRepository.refreshSession().isSuccess) {
+                            saveToBackend()
+                        } else throw failure
+                    }
+                    project = saved.toProject(roleCatalog, skillCatalog)
+                    ownedProjectId = saved.id
+                    refreshOnboarding(cardsApi)
+                } else {
+                    project = draftToSave
+                }
+                backendError = null
+                projectSaveError = null
+                screen = AppScreen.PROFILE
+                sessionRevision += 1
+            } catch (failure: Throwable) {
+                projectSaveError = failure.message ?: "Не удалось сохранить проект. Проверьте поля и повторите попытку."
+            } finally {
+                isSavingProject = false
+            }
+        }
+    }
 
     MaterialTheme {
         when (screen) {
@@ -555,29 +624,13 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
 
             AppScreen.CREATE_PROJECT -> CreateProjectScreen(
                 project = project,
-                onProjectChange = { project = it },
-                onBack = { screen = AppScreen.PROFILE },
-                onSave = {
-                    coroutineScope.launch {
-                        val result = runCatching {
-                            if (useBackend && cardsApi != null && authRepository?.hasSavedSession() == true) {
-                                val payload = project.toWriteDto(roleCatalog, skillCatalog)
-                                val existingProjectId = project.id
-                                val saved = if (existingProjectId == null) cardsApi.createProject(payload) else cardsApi.updateProject(existingProjectId, payload)
-                                val published = if (!project.published && saved.status != "open") cardsApi.updateProjectStatus(saved.id, "open") else saved
-                                project = published.toProject(roleCatalog, skillCatalog)
-                                ownedProjectId = published.id
-                            } else project = project.copy(published = true)
-                        }
-                        result.onSuccess {
-                            backendError = null
-                            runCatching { cardsApi?.let { refreshOnboarding(it) } }
-                            screen = AppScreen.PROFILE
-                            sessionRevision += 1
-                        }
-                            .onFailure { backendError = it.message ?: "Не удалось сохранить проект" }
-                    }
-                },
+                onProjectChange = { project = it; projectSaveError = null },
+                roles = roleCatalog,
+                skills = skillCatalog,
+                isSaving = isSavingProject,
+                errorMessage = projectSaveError,
+                onSaveDraft = { saveProject(false) },
+                onPublish = { saveProject(true) },
                 onCatalog = openCatalog,
                 onMatches = openMatches,
                 onChats = openChats,

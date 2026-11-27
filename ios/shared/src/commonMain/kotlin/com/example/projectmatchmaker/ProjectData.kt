@@ -10,4 +10,5 @@ data class ProjectData(
     val employment: String = "Гибкий график",
     val published: Boolean = false,
     val visible: Boolean = true,
+    val visibility: String = "draft",
 )
