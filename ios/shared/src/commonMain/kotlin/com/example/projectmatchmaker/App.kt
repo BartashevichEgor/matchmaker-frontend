@@ -627,7 +627,6 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 project = project,
                 onProjectChange = { project = it; projectSaveError = null },
                 roles = roleCatalog,
-                skills = skillCatalog,
                 isSaving = isSavingProject,
                 errorMessage = projectSaveError,
                 onSaveDraft = { saveProject(false) },
