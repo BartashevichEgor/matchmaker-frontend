@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
@@ -108,6 +109,7 @@ fun CatalogScreen(
     var appliedFilter by remember { mutableStateOf(CatalogFilter()) }
     var draftFilter by remember { mutableStateOf(CatalogFilter()) }
     var showExamples by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val hasCardsForMode = if (tab == CatalogTab.PROJECTS) projects.isNotEmpty() else people.isNotEmpty()
     val demoMode = showExamples || (!hasCardsForMode && !isLoading)
     val availableProjects = if (demoMode) demoProjects else projects
@@ -115,12 +117,14 @@ fun CatalogScreen(
     val filteredProjects = availableProjects.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
+            (searchQuery.isBlank() || listOf(item.title, item.description, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val filteredPeople = availablePeople.filter { item ->
         (appliedFilter.role == "Все роли" || item.role.contains(appliedFilter.role, ignoreCase = true)) &&
             (appliedFilter.skill == "Любые навыки" || item.skills.any { it.equals(appliedFilter.skill, ignoreCase = true) }) &&
-            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true))
+            (appliedFilter.workFormat == CatalogWorkFormat.ANY || item.workFormat.equals(appliedFilter.workFormat.label, ignoreCase = true)) &&
+            (searchQuery.isBlank() || listOf(item.name, item.bio, item.role, item.skills.joinToString(" ")).any { it.contains(searchQuery.trim(), ignoreCase = true) })
     }
     val visibleProject = filteredProjects.getOrNull(cardIndex)
     val visiblePerson = filteredPeople.getOrNull(cardIndex)
@@ -161,6 +165,14 @@ fun CatalogScreen(
                         )
                     } else {
                     Text("Находи людей и проекты для своей команды", color = MutedTextColor, fontSize = 11.sp, modifier = Modifier.padding(bottom = 14.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it; cardIndex = 0 },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        singleLine = true,
+                        placeholder = { Text("Поиск по каталогу", color = MutedTextColor, fontSize = 13.sp) },
+                        shape = RoundedCornerShape(12.dp),
+                    )
                     if (canSwitchTabs) {
                         CatalogTabs(tab) {
                             selectedTab = it
