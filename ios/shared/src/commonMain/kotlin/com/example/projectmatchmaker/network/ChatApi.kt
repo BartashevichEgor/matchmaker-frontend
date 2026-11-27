@@ -38,6 +38,7 @@ data class ChatProjectSummaryDto(
     val id: Int,
     val title: String,
     @SerialName("owner_id") val ownerId: Int,
+    val kind: String? = null,
 )
 
 @Serializable

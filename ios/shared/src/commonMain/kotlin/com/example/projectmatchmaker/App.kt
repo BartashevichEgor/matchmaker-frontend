@@ -157,7 +157,8 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     var matchReloadKey by remember { mutableStateOf(0) }
     var matchItems by remember { mutableStateOf<List<MatchDto>?>(null) }
     var demoChatRequest by remember { mutableStateOf(0) }
-    var demoChatMessages by remember { mutableStateOf(emptyList<ChatMessageDto>()) }
+    var requestedDemoChatId by remember { mutableStateOf("demo:codegarden") }
+    var demoChatMessages by remember { mutableStateOf(emptyMap<String, List<ChatMessageDto>>()) }
     var incomingLikeAccepted by remember { mutableStateOf(false) }
     var incomingLikeDismissed by remember { mutableStateOf(false) }
     var roleCatalog by remember { mutableStateOf(emptyList<CatalogItemDto>()) }
@@ -380,7 +381,7 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
     val openCatalog = { screen = AppScreen.CATALOG }
     val openMatches = { screen = AppScreen.MATCHES }
     val openChats = { screen = AppScreen.CHATS }
-    val openDemoChat = { demoChatRequest += 1; screen = AppScreen.CHATS }
+    val openDemoChat = { conversationId: String -> requestedDemoChatId = conversationId; demoChatRequest += 1; screen = AppScreen.CHATS }
     val openProfile = {
         screen = if (profileIsReady) AppScreen.PROFILE else AppScreen.CREATE_PROFILE
     }
@@ -687,7 +688,10 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onRetry = { catalogReloadKey += 1 },
                 onSwipeProject = { projectId, decision ->
                     coroutineScope.launch {
-                        runCatching { cardsApi?.swipeProject(projectId, decision) }.onFailure { catalogError = it.message }
+                        runCatching { cardsApi?.swipeProject(projectId, decision) }.onSuccess { response ->
+                            response?.match?.let { match -> matchItems = (matchItems.orEmpty().filterNot { it.id == match.id } + match) }
+                        }.onFailure { catalogError = it.message }
+                        if (decision == "like") matchReloadKey += 1
                         catalogReloadKey += 1
                     }
                 },
@@ -695,7 +699,10 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                     coroutineScope.launch {
                         val ownerProjectId = ownedProjectId
                         if (ownerProjectId != null) runCatching { cardsApi?.swipeCandidate(ownerProjectId, userId, decision) }
-                            .onFailure { catalogError = it.message }
+                            .onSuccess { response ->
+                                response?.match?.let { match -> matchItems = (matchItems.orEmpty().filterNot { it.id == match.id } + match) }
+                            }.onFailure { catalogError = it.message }
+                        if (decision == "like") matchReloadKey += 1
                         catalogReloadKey += 1
                     }
                 },
@@ -707,12 +714,13 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 onProfile = openProfile,
                 backendMatches = matchItems,
                 backendEnabled = useBackend && authRepository?.hasSavedSession() == true,
+                currentUserId = profile.backendUserId,
                 incomingLikeAccepted = incomingLikeAccepted,
                 incomingLikeDismissed = incomingLikeDismissed,
                 onAcceptIncomingLike = { incomingLikeAccepted = true; incomingLikeDismissed = false },
                 onDismissIncomingLike = { incomingLikeDismissed = true },
-                onOpenIncomingChat = openDemoChat,
-                onOpenDemoChat = openDemoChat,
+                onOpenIncomingChat = { openDemoChat("demo:codegarden") },
+                onOpenDemoChat = { demoId -> openDemoChat("demo:$demoId") },
             )
             AppScreen.CHATS -> ChatsScreen(
                 onCatalog = openCatalog,
@@ -722,8 +730,9 @@ fun App(useBackend: Boolean = DEFAULT_USE_BACKEND) {
                 accessToken = TokenStorage.getToken(),
                 currentUserId = profile.backendUserId,
                 initialDemoChatRequest = demoChatRequest,
+                initialDemoChatId = requestedDemoChatId,
                 demoMessages = demoChatMessages,
-                onDemoMessagesChange = { demoChatMessages = it },
+                onDemoMessagesChange = { id, messages -> demoChatMessages = demoChatMessages + (id to messages) },
                 onSessionUnauthorized = {
                     coroutineScope.launch {
                         if (authRepository?.refreshSession()?.isSuccess == true) sessionRevision += 1

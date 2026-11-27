@@ -119,6 +119,8 @@ data class MatchDto(
     @SerialName("candidate_id") val candidateId: Int,
     @SerialName("created_at") val createdAt: String,
     @SerialName("room_key") val roomKey: String,
+    val project: ChatProjectSummaryDto? = null,
+    val candidate: ChatCandidateSummaryDto? = null,
 )
 
 @Serializable

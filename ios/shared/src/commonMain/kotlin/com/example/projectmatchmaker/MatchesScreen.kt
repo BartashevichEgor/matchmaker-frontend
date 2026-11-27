@@ -33,12 +33,13 @@ fun MatchesScreen(
     onProfile: () -> Unit,
     backendMatches: List<MatchDto>? = null,
     backendEnabled: Boolean = false,
+    currentUserId: Int? = null,
     incomingLikeAccepted: Boolean = false,
     incomingLikeDismissed: Boolean = false,
     onAcceptIncomingLike: () -> Unit = {},
     onDismissIncomingLike: () -> Unit = {},
     onOpenIncomingChat: () -> Unit = onChats,
-    onOpenDemoChat: () -> Unit = onChats,
+    onOpenDemoChat: (String) -> Unit = { onChats() },
 ) {
     ScreenFrame(MainDestination.MATCHES, onCatalog, onProfile, {}, onChats) {
         PageCard {
@@ -54,21 +55,19 @@ fun MatchesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (backendMatches.isNullOrEmpty() && !incomingLikeAccepted && !incomingLikeDismissed) {
+                    if (!incomingLikeAccepted && !incomingLikeDismissed) {
                         item(key = "incoming-codegarden") {
                             IncomingLikeCard(onAcceptIncomingLike, onDismissIncomingLike)
                         }
                     }
-                    if (backendMatches.isNullOrEmpty() && incomingLikeAccepted) {
+                    if (incomingLikeAccepted) {
                         item(key = "mutual-codegarden") {
                             MatchCard(demoIncomingMatch, onOpenIncomingChat)
                         }
                     }
-                    if (backendMatches.isNullOrEmpty()) {
-                        items(demoMatches, key = { it.id }) { match -> MatchCard(match, onOpenDemoChat) }
-                    } else {
-                        items(backendMatches.orEmpty(), key = { it.id }) { match -> BackendMatchCard(match, onChats) }
-                    }
+                    items(backendMatches.orEmpty(), key = { "backend-${it.id}" }) { match -> BackendMatchCard(match, currentUserId, onChats) }
+                    item(key = "demo-heading") { Text("Примеры мэтчей", color = MutedTextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    items(demoMatches, key = { "demo-${it.id}" }) { match -> MatchCard(match) { onOpenDemoChat(match.id) } }
                 }
             }
         }
@@ -97,11 +96,13 @@ private fun IncomingLikeCard(onAccept: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun BackendMatchCard(match: MatchDto, onOpenChat: () -> Unit) {
+private fun BackendMatchCard(match: MatchDto, currentUserId: Int?, onOpenChat: () -> Unit) {
     Surface(Modifier.fillMaxWidth(), color = PanelBgColor, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) {
-            Text("Совпадение #${match.id}", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text("Проект #${match.projectId} · участник #${match.candidateId}", color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(match.project?.title ?: "Проект #${match.projectId}", color = TextDarkColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            val candidate = match.candidate?.displayName?.takeIf(String::isNotBlank) ?: "Специалист #${match.candidateId}"
+            val context = if (match.project?.ownerId == currentUserId) "Мэтч со специалистом: $candidate" else "Команда и проект: ${match.project?.title ?: "#${match.projectId}"}"
+            Text(context, color = MutedTextColor, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
             PrimaryButton("Открыть чат", onOpenChat)
         }
     }
